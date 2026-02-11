@@ -1,0 +1,26 @@
+import { SecuritySchemeObject } from './openapi-typings';
+/**
+ * An operation security
+ */
+export declare class Security {
+    spec: SecuritySchemeObject;
+    scope: string[];
+    /**
+     * variable name
+     */
+    var: string;
+    /**
+     * Header Name
+     */
+    name: string;
+    /**
+     * Property Description
+     */
+    tsComments: string;
+    /**
+     * Location of security parameter
+     */
+    in: string;
+    type: string;
+    constructor(key: string, spec: SecuritySchemeObject, scope?: string[]);
+}
