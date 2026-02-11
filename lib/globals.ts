@@ -17,6 +17,7 @@ export class Globals {
   requestBuilderFile: string;
   responseClass: string;
   responseFile: string;
+  utilsFile?: string;
   moduleClass?: string;
   moduleFile?: string;
   modelIndexFile?: string;
@@ -25,6 +26,7 @@ export class Globals {
   rootUrl?: string;
   promises: boolean;
   generateServices: boolean;
+  experimental?: boolean;
 
   constructor(options: Options) {
     this.configurationClass = options.configuration ?? 'ApiConfiguration';
@@ -49,6 +51,8 @@ export class Globals {
     this.requestBuilderFile = fileName(this.requestBuilderClass);
     this.responseClass = options.response ?? 'StrictHttpResponse';
     this.responseFile = fileName(this.responseClass);
+    this.experimental = options.experimental || false;
+
     if (options.module !== false && options.module !== '') {
       this.moduleClass = options.module === true || options.module === undefined ? 'ApiModule' : options.module;
       // Angular's best practices demands xxx.module.ts, not xxx-module.ts
@@ -64,5 +68,10 @@ export class Globals {
       this.functionIndexFile = options.functionIndex === true || options.functionIndex === undefined ? 'functions' : options.functionIndex;
     }
     this.generateServices = !!options.services;
+
+    if (this.experimental) {
+      this.utilsFile = 'utils';
+    }
   }
+
 }

@@ -1,3 +1,7 @@
+CHANGELOG:
+- Merge https://github.com/cyclosproject/ng-openapi-gen/pull/332/changes
+
+---
 ng-openapi-gen: An OpenAPI 3.0 and 3.1 code generator for Angular
 ---
 

@@ -33,6 +33,8 @@ export class Model extends GenType {
   // Names of required properties without attachment to propertiy definitions
   orphanRequiredProperties: string[];
 
+  readOnly: boolean;
+
   constructor(public openApi: OpenAPIObject, name: string, public schema: SchemaObject, options: Options) {
     super(name, unqualifiedName, options);
 
@@ -64,6 +66,8 @@ export class Model extends GenType {
     const hasOneOf = schema.oneOf && schema.oneOf.length > 0;
     this.isObject = (type === 'object' || !!schema.properties) && !isNullable(schema) && !hasAllOf && !hasOneOf;
     this.isSimple = !this.isObject && !this.isEnum;
+
+    this.readOnly = schema.readOnly || false;
 
     if (this.isObject) {
       // Object
@@ -131,6 +135,7 @@ export class Model extends GenType {
       // An object definition
       const properties = schema.properties || {};
       const required = schema.required || [];
+      const readOnly = schema.readOnly || false;
       const propNames = Object.keys(properties);
 
       for (const propName of propNames) {
@@ -145,6 +150,8 @@ export class Model extends GenType {
         // Store for later resolution
         this._additionalPropertiesSchema = schema.additionalProperties as SchemaObject;
       }
+
+      this.readOnly = readOnly;
     }
     if (schema.allOf) {
       schema.allOf.forEach(s => {
