@@ -9,6 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 {{/if}}
+{{#if (isWriteMethod operation.method)}}{{#if utilsFile}}import * as Utils from '../{{{utilsFile}}}'; {{/if}}{{/if}}
 
 import { {{baseServiceClass}} } from '../{{baseServiceFile}}';
 import { {{configurationClass}} } from '../{{configurationFile}}';
