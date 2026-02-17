@@ -1,7 +1,7 @@
-import { escapeId, tsComments, tsType } from './gen-utils';
-import { Model } from './model';
-import { OpenAPIObject, ReferenceObject, SchemaObject } from './openapi-typings';
-import { Options } from './options';
+import {escapeId, tsComments, tsType} from './gen-utils';
+import {Model} from './model';
+import {isReferenceObject, OpenAPIObject, ReferenceObject, SchemaObject} from './openapi-typings';
+import {Options} from './options';
 
 /**
  * An object property
@@ -25,7 +25,7 @@ export class Property {
     // Defer type resolution until after imports are finalized
     this.type = ''; // Will be set later
     this.identifier = escapeId(this.name);
-    this.readOnly = (schema as SchemaObject).readOnly || false;
+    this.readOnly = isReferenceObject(schema)?false: (schema as SchemaObject).readOnly || false;
     const description = (schema as SchemaObject).description || '';
     this.tsComments = tsComments(description, 1, (schema as SchemaObject).deprecated);
   }
