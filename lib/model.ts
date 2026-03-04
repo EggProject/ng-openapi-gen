@@ -180,6 +180,9 @@ export class Model extends GenType {
         if (type.startsWith('null | ')) {
           propTypes.add('null');
           propTypes.add(type.substring('null | '.length));
+        } else if (this.options.noOptionalMarker && type.endsWith(' | null')) {
+          propTypes.add('null');
+          propTypes.add(type.substring(0, type.length - ' | null'.length));
         } else {
           propTypes.add(type);
         }
