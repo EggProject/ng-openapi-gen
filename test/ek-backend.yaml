@@ -1,0 +1,2653 @@
+# yaml-language-server: $schema=https://spec.openapis.org/oas/3.1/schema/2021-09-28
+openapi: 3.1.0
+info:
+  title: EK Backend API
+  version: 1.0.11
+  description: API dokumentáció az EK Backend szolgáltatáshoz
+servers:
+  - url: http://localhost:8080
+    description: Fejlesztői szerver
+tags:
+  - name: atvevo
+    description: Átvevő/ügyfél adatok lekérdezése
+  - name: beallitas
+    description: Felhasználói beállítások kezelése
+  - name: deprecated
+    description: Elavult endpointok (fejlesztés alatt ideiglenesen elérhető)
+  - name: kalkulacio
+    description: Kalkulációs elemek kezelése
+  - name: keszlet
+    description: Készlet adatok lekérdezése
+  - name: projekt
+    description: Projekt és Lead kezelés
+  - name: topologia
+    description: Topológia kezelés
+  - name: ugyfel
+    description: Ügyfél kezelés
+paths:
+  /atvevo:
+    get:
+      tags:
+        - atvevo
+      summary: Átvevő keresés (lapozással)
+      description: Átvevők keresése több mezőben (sERPaUgyfelKod, sERPaUgyfelNev, Adoszam alapján) lapozással
+      operationId: searchAtvevo
+      parameters:
+        - name: kereses
+          in: query
+          description: Keresési kifejezés (keres a kódban, névben és adószámban)
+          required: true
+          schema:
+            type: string
+            minLength: 3
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres keresés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AtvevoPagedResponse'
+        '400':
+          description: Hibás kérés - kereses paraméter kötelező
+        '500':
+          description: Szerver hiba
+  /atvevo/{serpaugyfelid}:
+    get:
+      tags:
+        - atvevo
+      summary: Átvevő lekérdezés azonosító alapján
+      description: Egyedi átvevő/ügyfél lekérdezése sERP ügyfél azonosító alapján
+      operationId: getAtvevo
+      parameters:
+        - name: serpaugyfelid
+          in: path
+          description: sERP ügyfél azonosító
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Atvevo'
+        '404':
+          description: Nem található a megadott azonosítóval rendelkező átvevő
+        '500':
+          description: Szerver hiba
+  /cikktorzs:
+    get:
+      tags:
+        - deprecated
+      summary: Cikktörzs változások lekérdezése (DEPRECATED)
+      description: "DEPRECATED - Csak fejlesztés alatt ideiglenesen elérhető. Termék változások lekérdezése időbélyeg alapján."
+      operationId: getCikktorzs
+      deprecated: true
+      parameters:
+        - name: idobelyegTol
+          in: query
+          description: Időbélyeg kezdő értéke (idobelyeg > idobelyegTol szűrés, nagyobb mint). ISO 8601 formátum (pl. 2024-01-15T10:30:00+01:00)
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: valtozas
+          in: query
+          description: Változás típusok szűrése (vesszővel elválasztva, pl. A,M). Lehetséges értékek - A (add/hozzáadás), M (modify/módosítás), D (delete/törlés)
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [A, M, D]
+      responses:
+        '200':
+          description: Sikeres szinkronizálás - cikktörzs rekordok létrehozva/frissítve
+        '400':
+          description: Hibás kérés - idobelyegTol paraméter kötelező és helyes formátumú kell legyen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Az idobelyegTol paraméter kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /gyariszam-valtozas:
+    get:
+      tags:
+        - deprecated
+      summary: Gyári szám változások szinkronizálása (DEPRECATED)
+      description: "DEPRECATED - Csak fejlesztés alatt ideiglenesen elérhető. Terv eszközök gyári szám adatainak szinkronizálása egyedi eszköz változások alapján."
+      operationId: getGyariSzamValtozas
+      deprecated: true
+      parameters:
+        - name: idobelyegTol
+          in: query
+          description: Időbélyeg kezdő értéke (idobelyeg > idobelyegTol szűrés, nagyobb mint). ISO 8601 formátum (pl. 2024-01-15T10:30:00+01:00)
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Sikeres szinkronizálás - terv eszközök gyári szám adatai frissítve
+        '400':
+          description: Hibás kérés - idobelyegTol paraméter kötelező és helyes formátumú kell legyen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Az idobelyegTol paraméter kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /lead-valtozas:
+    get:
+      tags:
+        - deprecated
+      summary: Lead változások szinkronizálása (DEPRECATED)
+      description: "DEPRECATED - Csak fejlesztés alatt ideiglenesen elérhető. Lead módosítások szinkronizálása szerződés változások alapján."
+      operationId: getLeadValtozas
+      deprecated: true
+      parameters:
+        - name: idobelyegTol
+          in: query
+          description: Időbélyeg kezdő értéke (idobelyeg > idobelyegTol szűrés, nagyobb mint). ISO 8601 formátum (pl. 2024-01-15T10:30:00+01:00)
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Sikeres szinkronizálás - lead rekordok frissítve
+        '400':
+          description: Hibás kérés - idobelyegTol paraméter kötelező és helyes formátumú kell legyen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Az idobelyegTol paraméter kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /projekt-valtozas:
+    get:
+      tags:
+        - deprecated
+      summary: Projekt változások szinkronizálása (DEPRECATED)
+      description: "DEPRECATED - Csak fejlesztés alatt ideiglenesen elérhető. Projekt módosítások szinkronizálása projekt változások alapján."
+      operationId: getProjektValtozas
+      deprecated: true
+      parameters:
+        - name: idobelyegTol
+          in: query
+          description: Időbélyeg kezdő értéke (idobelyeg > idobelyegTol szűrés, nagyobb mint). ISO 8601 formátum (pl. 2024-01-15T10:30:00+01:00)
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Sikeres szinkronizálás - projekt rekordok frissítve
+        '400':
+          description: Hibás kérés - idobelyegTol paraméter kötelező és helyes formátumú kell legyen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Az idobelyegTol paraméter kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /beallitas:
+    get:
+      tags:
+        - beallitas
+      summary: Felhasználói beállítások lekérdezése (lapozással)
+      description: Felhasználói beállítások lekérdezése felhasználó és opcionálisan kulcs alapján
+      operationId: getBeallitas
+      parameters:
+        - name: kulcs
+          in: query
+          description: Beállítás kulcs (opcionális szűrés)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FelhasznaloBeallitasPagedResponse'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Validációs hiba"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+    put:
+      tags:
+        - beallitas
+      summary: Felhasználói beállítás upsert (létrehozás vagy frissítés)
+      description: Felhasználói beállítás létrehozása vagy frissítése felhasználó és kulcs alapján (idempotent művelet)
+      operationId: upsertBeallitas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FelhasznaloBeallitasUpsert'
+      responses:
+        '200':
+          description: Beállítás sikeresen létrehozva vagy frissítve (idempotent művelet)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FelhasznaloBeallitas'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Minden mező kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /kalkulacio:
+    get:
+      tags:
+        - kalkulacio
+      summary: Kalkulációs elemek lekérdezése lead azonosítók alapján (lapozással)
+      description: Ügyfelek lekérdezése projektek, leadek és kalkulációs elemek beágyazásával lead azonosítók alapján
+      operationId: getKalkulacio
+      parameters:
+        - name: beyeLeadId
+          in: query
+          description: "Beye lead azonosítók vesszővel elválasztva (pl: 123,456,789)"
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int32
+          style: form
+          explode: false
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UgyfelWithProjektekAndKalkulacioPagedResponse'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "A beyeLeadIds paraméter kötelező és nem lehet üres"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /kalkulacio/import:
+    post:
+      tags:
+        - kalkulacio
+      summary: Kalkulációs elemek importálása
+      description: Kalkulációs elemek importálása Beye rendszerből lead azonosítók alapján
+      operationId: importKalkulacio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportKalkulacioRequest'
+      responses:
+        '201':
+          description: Sikeres importálás
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UgyfelWithProjektek'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "A beyeLeadIds paraméter kötelező és nem lehet üres"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /kalkulacioelem/{id}/blockmultiplier:
+    get:
+      tags:
+        - kalkulacio
+      summary: Kalkulációs elemhez (header sor) tartozó block multiplier lekérdezése
+      description: Egy kalkulációs elemhez (header sor) tartozó block multiplier adatok lekérdezése
+      operationId: getKalkulacioElemBlockMultiplier
+      parameters:
+        - name: id
+          in: path
+          description: Kalkulációs elem (header sor) egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KalkulacioElem'
+        '404':
+          description: Kalkulációs elem nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Kalkulációs elem nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /kalkulacioelem/{id}/gyereksorok:
+    get:
+      tags:
+        - kalkulacio
+      summary: Kalkulációs elem header sorához tartozó gyerek sorok lekérdezése (lapozással)
+      description: Egy kalkulációs elemhez (header sor) tartozó gyerek elemek lekérdezése lapozással, opcionális szűréssel excel sor típusra
+      operationId: getKalkulacioElemGyereksorok
+      parameters:
+        - name: id
+          in: path
+          description: Kalkulációs elem (header sor) egyedi azonosítója - ez lesz az excelParentHeaderId a gyerek soroknál
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: excelRowType
+          in: query
+          description: Excel sor típus szűrési feltétel (több érték megadható)
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KalkulacioElemPagedResponse'
+        '404':
+          description: Kalkulációs elem nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Kalkulációs elem nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /kalkulacioelem/{id}/topologiaelemek:
+    get:
+      tags:
+        - kalkulacio
+      summary: Kalkulációs elemhez, mint header sorhoz tartozó topológia elemek lekérdezése
+      description: Egy kalkulációs elemhez, mint header sorhoz tartozó topológiák és topológia elemek lekérdezése, opcionális szűréssel topológia elem terem típusra
+      operationId: getKalkulacioElemTopologiaElemek
+      parameters:
+        - name: id
+          in: path
+          description: Kalkulációs elem (header sor) egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: topologiaElemTeremTipus
+          in: query
+          description: Topológia elem terem típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sikeres lekérdezés - kalkulációs elem topológiái kontextussal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KalkulacioElemTopologiakResponse'
+        '404':
+          description: Kalkulációs elem nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Kalkulációs elem nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /kalkulacioelem/{id}/terveszkozok:
+    post:
+      tags:
+        - kalkulacio
+      summary: Terv eszközök létrehozása kalkulációs elem, mint header sor alapján
+      description: Kalkulációs elemhez tartozó terv eszközök generálása
+      operationId: createTervEszkozokFromKalkulacioElem
+      parameters:
+        - name: id
+          in: path
+          description: Kalkulációs elem (header sor) egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        description: Terv eszközök létrehozási paraméterek
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTervEszkozokRequest'
+      responses:
+        '201':
+          description: Terv eszközök sikeresen létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TervEszkozokCreatedResponse'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Validációs hiba"
+        '404':
+          description: Kalkulációs elem nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Kalkulációs elem nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /keszlet:
+    get:
+      tags:
+        - keszlet
+      summary: Készlet lekérdezés
+      description: Készlet adatok lekérdezése különböző szűrési feltételek alapján, opcionálisan összesítve
+      operationId: getKeszlet
+      parameters:
+        - name: serpaProjectKod
+          in: query
+          description: Serpa projekt kód alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: raktarKod
+          in: query
+          description: Raktár kód alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: raktarHelyKod
+          in: query
+          description: Raktárhely kód alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: serpaCikkSzam
+          in: query
+          description: Serpa cikkszám alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: gyartoiCikkszam
+          in: query
+          description: Gyártói cikkszám alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: gyarto
+          in: query
+          description: Gyártó alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: tetelesLista
+          in: query
+          description: Ha true, tételes készlet lista; ha false vagy nincs megadva, összesített készlet lista
+          required: true
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KeszletPagedResponse'
+        '400':
+          description: Hibás kérés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Hibás paraméter"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /projekt-lead:
+    get:
+      tags:
+        - projekt
+      summary: Projekt-Lead lekérdezés IDS rendszerből (lapozással)
+      description: Ügyfelek lekérdezése projektek és leadek beágyazásával szűrési feltételek alapján, IDS rendszerből
+      operationId: getProjektLead
+      parameters:
+        - name: beyeProjectKod
+          in: query
+          description: "Beye projekt kód szűrési feltétel. FIGYELEM: beyeProjectKod ÉS beyeLeadId közül pontosan egyet kell megadni, mindkettőt együtt nem lehet."
+          required: false
+          schema:
+            type: string
+        - name: beyeLeadId
+          in: query
+          description: "Beye lead azonosító szűrési feltétel. FIGYELEM: beyeProjectKod ÉS beyeLeadId közül pontosan egyet kell megadni, mindkettőt együtt nem lehet."
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UgyfelWithProjektekPagedResponse'
+        '400':
+          description: Hibás kérés - pontosan az egyik query paramétert kell megadni (beyeProjectKod VAGY beyeLeadId), mindkettőt együtt vagy egyiket sem nem lehet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Pontosan az egyik paramétert kell megadni: beyeProjectKod vagy beyeLeadId"
+        '500':
+          description: Szerver hiba
+  /projekt/{id}/topologia:
+    get:
+      tags:
+        - projekt
+      summary: Projekt topológia lekérdezése
+      description: Egy projekthez kapcsolódó topológia lekérdezése az összes topológia elemmel, opcionális szűréssel topológia elem terem típusra
+      operationId: getProjektTopologia
+      parameters:
+        - name: id
+          in: path
+          description: Projekt egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: topologiaElemTeremTipus
+          in: query
+          description: Topológia elem terem típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjektWithTopologia'
+        '404':
+          description: Projekt nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Projekt nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /projektek:
+    get:
+      tags:
+        - projekt
+      summary: Projektek lekérdezése (lapozással)
+      description: Projektek lekérdezése ügyfél azonosító alapján, opcionális szűréssel projekt mezőkre
+      operationId: getProjektek
+      parameters:
+        - name: ugyfelId
+          in: query
+          description: Ügyfél azonosító
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: kereses
+          in: query
+          description: Keresési feltétel a beyeProjectKod és beyeProjectNev mezőkre
+          required: false
+          schema:
+            type: string
+        - name: beyeProjectId
+          in: query
+          description: Beye projekt azonosító szűrési feltétel
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: beyeProjectKod
+          in: query
+          description: Beye projekt kód szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: beyeProjectNev
+          in: query
+          description: Beye projekt név szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: serpaProjectId
+          in: query
+          description: Serpa projekt azonosító szűrési feltétel
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: serpaProjectKod
+          in: query
+          description: Serpa projekt kód szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: serpaProjectNev
+          in: query
+          description: Serpa projekt név szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: aktivProjekt
+          in: query
+          description: Aktív projekt szűrési feltétel
+          required: false
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjektPagedResponse'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Az ugyfelId paraméter kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /serpamozgas:
+    get:
+      tags:
+        - deprecated
+      summary: Serpa mozgás változások lekérdezése (DEPRECATED)
+      description: "DEPRECATED - Csak fejlesztés alatt ideiglenesen elérhető. Mozgás forrás-cél változások lekérdezése időbélyeg alapján."
+      operationId: getSerpaMozgas
+      deprecated: true
+      parameters:
+        - name: idobelyegTol
+          in: query
+          description: Időbélyeg kezdő értéke (idobelyeg > idobelyegTol szűrés, nagyobb mint). ISO 8601 formátum (pl. 2024-01-15T10:30:00+01:00)
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Sikeres szinkronizálás - SerpaMozgas rekordok létrehozva
+        '400':
+          description: Hibás kérés - idobelyegTol paraméter kötelező és helyes formátumú kell legyen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Az idobelyegTol paraméter kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /topologia:
+    get:
+      tags:
+        - topologia
+      summary: Topológiák lekérdezése (lapozással)
+      description: Topológiák lekérdezése ügyfél és/vagy projekt alapján (opcionális szűrés), keresési feltétel, kod és megnevezés alapján
+      operationId: getTopologiak
+      parameters:
+        - name: ugyfelId
+          in: query
+          description: Ügyfél azonosító szűrési feltétel
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: projektId
+          in: query
+          description: Projekt azonosító szűrési feltétel
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: kereses
+          in: query
+          description: Keresési feltétel a kod és megnevezes mezőkre
+          required: false
+          schema:
+            type: string
+        - name: kod
+          in: query
+          description: Topológia kód szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: megnevezes
+          in: query
+          description: Topológia megnevezés szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaPagedResponse'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Validációs hiba"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+    post:
+      tags:
+        - topologia
+      summary: Új topológia létrehozása
+      description: Új topológia létrehozása a megadott adatokkal
+      operationId: createTopologia
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopologiaCreate'
+      responses:
+        '201':
+          description: Topológia sikeresen létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topologia'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Érvénytelen adatok"
+        '500':
+          description: Szerver hiba
+  /topologia/{id}:
+    get:
+      tags:
+        - topologia
+      summary: Topológia lekérdezése azonosító alapján
+      description: Egyedi topológia alapadatainak lekérdezése azonosító alapján
+      operationId: getTopologia
+      parameters:
+        - name: id
+          in: path
+          description: "Topológia egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaBase'
+        '404':
+          description: Topológia nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+    put:
+      tags:
+        - topologia
+      summary: Topológia módosítása
+      description: Létező topológia módosítása
+      operationId: updateTopologia
+      parameters:
+        - name: id
+          in: path
+          description: "Topológia egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopologiaUpdate'
+      responses:
+        '200':
+          description: Topológia sikeresen módosítva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaBase'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Érvénytelen adatok"
+        '404':
+          description: Topológia nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+    delete:
+      tags:
+        - topologia
+      summary: Topológia törlése
+      description: Létező topológia törlése
+      operationId: deleteTopologia
+      parameters:
+        - name: id
+          in: path
+          description: "Topológia egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Topológia sikeresen törölve
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Topológia nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+  /topologia/{id}/projektek:
+    get:
+      tags:
+        - topologia
+      summary: Topológiához rendelt projektek lekérdezése
+      description: Egy topológiához hozzárendelt projektek listájának lekérdezése
+      operationId: getProjektekByTopologia
+      parameters:
+        - name: id
+          in: path
+          description: Topológia egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topologia'
+        '404':
+          description: Topológia nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /topologia/{id}/fajlfeltoltes:
+    post:
+      tags:
+        - topologia
+      summary: Excel fájl feltöltése topológiához
+      description: Excel fájl feltöltése és feldolgozása egy adott topológiához
+      operationId: uploadTopologiaExcel
+      parameters:
+        - name: id
+          in: path
+          description: Topológia egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel fájl (.xlsx vagy .xls formátumban)
+              required:
+                - file
+      responses:
+        '201':
+          description: Fájl sikeresen feltöltve és feldolgozva
+        '400':
+          description: Hibás kérés - érvénytelen fájl vagy formátum
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Csak .xlsx vagy .xls fájlok engedélyezettek"
+        '404':
+          description: Topológia nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /topologia/{topologiaId}/projektek/{projektId}:
+    post:
+      tags:
+        - topologia
+      summary: Projekt hozzáadása topológiához
+      description: Kapcsolat létrehozása egy topológia és egy projekt között
+      operationId: addProjektToTopologia
+      parameters:
+        - name: topologiaId
+          in: path
+          description: Topológia egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: projektId
+          in: path
+          description: Projekt egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '201':
+          description: Kapcsolat sikeresen létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topologia'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Érvénytelen azonosítók"
+        '404':
+          description: Topológia vagy projekt nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia vagy projekt nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+    delete:
+      tags:
+        - topologia
+      summary: Projekt eltávolítása topológiától
+      description: Kapcsolat törlése egy topológia és egy projekt között
+      operationId: removeProjektFromTopologia
+      parameters:
+        - name: topologiaId
+          in: path
+          description: Topológia egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: projektId
+          in: path
+          description: Projekt egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Kapcsolat sikeresen törölve
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Topológia, projekt vagy kapcsolat nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia, projekt vagy kapcsolat nem található"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /topologia/{topologiaId}/ugyfelek/{ugyfelId}:
+    delete:
+      tags:
+        - topologia
+      summary: Ügyfél eltávolítása topológiától
+      description: Kapcsolat törlése egy topológia és egy ügyfél között. A kapcsolat törlésekor sem az ügyfél, sem a topológia nem törlődik, csak a kapcsolat az ugyfel_to_topologia táblából.
+      operationId: removeUgyfelFromTopologia
+      parameters:
+        - name: topologiaId
+          in: path
+          description: Topológia egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: ugyfelId
+          in: path
+          description: Ügyfél egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Kapcsolat sikeresen törölve
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Topológia, ügyfél vagy kapcsolat nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia, ügyfél vagy kapcsolat nem található"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /topologia/{id}/topologiaelemek:
+    get:
+      tags:
+        - topologia
+      summary: Topológia elemeinek lekérdezése
+      description: Egy topológia összes elemének lekérdezése a topológia azonosítója alapján, opcionális szűréssel
+      operationId: getTopologiaElemek
+      parameters:
+        - name: id
+          in: path
+          description: "Topológia egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: kereses
+          in: query
+          description: "Keresési kifejezés, amely alapján a topológia elemek beszedesMegnevezes, cim, epiteszetiMegnevezes vagy megnevezes mezőiben keres"
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaWithElemek'
+        '404':
+          description: Topológia nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+  /topologiaelem:
+    post:
+      tags:
+        - topologia
+      summary: Új topológia elem létrehozása
+      description: Új topológia elem létrehozása
+      operationId: createTopologiaElem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopologiaElem'
+      responses:
+        '201':
+          description: Topológia elem sikeresen létrehozva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaElem'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Érvénytelen adatok"
+        '404':
+          description: Topológia nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+  /topologiaelem/{id}:
+    put:
+      tags:
+        - topologia
+      summary: Topológia elem módosítása
+      description: Létező topológia elem módosítása
+      operationId: updateTopologiaElem
+      parameters:
+        - name: id
+          in: path
+          description: "Topológia elem egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TopologiaElemUpdate'
+      responses:
+        '200':
+          description: Topológia elem sikeresen módosítva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaElem'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Érvénytelen adatok"
+        '404':
+          description: Topológia elem nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia elem nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+    delete:
+      tags:
+        - topologia
+      summary: Topológia elem törlése
+      description: Létező topológia elem törlése
+      operationId: deleteTopologiaElem
+      parameters:
+        - name: id
+          in: path
+          description: "Topológia elem egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Topológia elem sikeresen törölve
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "A topológia elem nem törölhető, mert gyerek elemek tartoznak hozzá"
+        '404':
+          description: Topológia elem nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia elem nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+  /topologiaelem/{id}/mozgatas:
+    put:
+      tags:
+        - topologia
+      summary: Topológia elem mozgatása
+      description: Topológia elem mozgatása új szülő elem alá
+      operationId: mozgatasTopologiaElem
+      parameters:
+        - name: id
+          in: path
+          description: "Topológia elem egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                szuloTopologiaElemId:
+                  type: [integer, "null"]
+                  format: int64
+                  description: Új szülő topológia elem azonosító (null esetén gyökérszintre kerül)
+      responses:
+        '200':
+          description: Topológia elem sikeresen mozgatva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaWithElemek'
+        '400':
+          description: Hibás kérés - validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Érvénytelen adatok"
+        '404':
+          description: Topológia elem nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Topológia elem nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+  /ugyfelek:
+    get:
+      tags:
+        - ugyfel
+      summary: Ügyfelek lekérdezése
+      description: Ügyfelek lekérdezése lapozással és opcionális szűrési feltételekkel (kereses, nev, rovidNev)
+      operationId: getUgyfelek
+      parameters:
+        - name: kereses
+          in: query
+          description: "Keresési kifejezés, amely alapján az ügyfelek beyeUgyfelId, nev vagy rovidNev mezőiben keres"
+          required: true
+          schema:
+            type: string
+            minLength: 0
+        - name: nev
+          in: query
+          description: Név alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: rovidNev
+          in: query
+          description: Rövid név alapján történő szűrés
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UgyfelPagedResponse'
+        '400':
+          description: Hibás kérés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Hibás paraméter"
+        '500':
+          description: Szerver hiba
+  /ugyfel/{id}/topologiak:
+    get:
+      tags:
+        - ugyfel
+      summary: Ügyfél topológiáinak lekérdezése
+      description: Egy ügyfél összes topológiájának lekérdezése az ügyfél azonosítója alapján
+      operationId: getUgyfelTopologiak
+      parameters:
+        - name: id
+          in: path
+          description: "Ügyfél egyedi azonosítója"
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UgyfelWithTopologiak'
+        '404':
+          description: Ügyfél nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Ügyfél nem található a megadott azonosítóval"
+        '500':
+          description: Szerver hiba
+components:
+  schemas:
+  # Basic Schemas
+    Atvevo:
+      type: object
+      required:
+        - sERPaUgyfelId
+        - sERPaUgyfelKod
+        - sERPaUgyfelNev
+      properties:
+        sERPaUgyfelId:
+          type: integer
+          description: sERP ügyfél azonosító
+        sERPaUgyfelKod:
+          type: [string, "null"]
+          maxLength: 15
+          description: sERP ügyfél kód
+        sERPaUgyfelNev:
+          type: [string, "null"]
+          maxLength: 50
+          description: sERP ügyfél név
+        helyseg:
+          type: [string, "null"]
+          maxLength: 50
+          description: Helység/város
+        utcaHSzam:
+          type: [string, "null"]
+          maxLength: 100
+          description: Utca és házszám
+        irSzam:
+          type: [string, "null"]
+          maxLength: 8
+          description: Irányítószám
+        adoszam:
+          type: [string, "null"]
+          maxLength: 11
+          description: Adószám (magyar)
+        euAdoszam:
+          type: [string, "null"]
+          maxLength: 20
+          description: EU adószám
+        cegjegyzekszam:
+          type: [string, "null"]
+          maxLength: 15
+          description: Cégjegyzékszám
+        megjegyzes:
+          type: [string, "null"]
+          maxLength: 100
+          description: Megjegyzés
+        csoportosAdoszam:
+          type: [string, "null"]
+          maxLength: 11
+          description: Csoportos adószám
+        kulfoldiAdoszam:
+          type: [string, "null"]
+          maxLength: 20
+          description: Külföldi adószám
+    FelhasznaloBeallitas:
+      type: object
+      required:
+        - felhasznaloBeallitasId
+        - felhasznalo
+        - kulcs
+      properties:
+        felhasznaloBeallitasId:
+          type: integer
+          format: int64
+          description: Felhasználó beállítás azonosító
+          readOnly: true
+        ertek:
+          type: [string, "null"]
+          maxLength: 2147483647
+          description: |
+            Beállítás értéke JSON string formátumban.
+            JSON objektumokat escaped string-ként kell tárolni.
+            Példa: "{\"theme\":\"dark\",\"language\":\"hu\"}"
+        felhasznalo:
+          type: string
+          maxLength: 100
+          description: Felhasználó azonosító
+        kulcs:
+          type: string
+          maxLength: 100
+          description: Beállítás kulcs
+    FelhasznaloBeallitasUpsert:
+      type: object
+      required:
+        - kulcs
+        - ertek
+      properties:
+        ertek:
+          type: string
+          maxLength: 2147483647
+          description: |
+            Beállítás értéke JSON string formátumban.
+            JSON objektumokat escaped string-ként kell küldeni.
+            Példa: "{\"theme\":\"dark\",\"language\":\"hu\"}"
+          example: "{\"theme\":\"dark\",\"language\":\"hu\",\"notifications\":{\"email\":true,\"push\":false,\"frequency\":\"daily\"},\"dashboard\":{\"layout\":\"grid\",\"widgets\":[{\"id\":\"projektek\",\"position\":1,\"visible\":true},{\"id\":\"kalkulaciok\",\"position\":2,\"visible\":true},{\"id\":\"topologiak\",\"position\":3,\"visible\":false}]},\"tableSettings\":{\"pageSize\":25,\"sortOrder\":\"asc\",\"defaultColumns\":[\"kod\",\"nev\",\"datum\"]}}"
+        kulcs:
+          type: string
+          maxLength: 100
+          description: Beállítás kulcs
+    ImportKalkulacioRequest:
+      type: object
+      required:
+        - beyeLeadIds
+      properties:
+        beyeLeadIds:
+          type: array
+          items:
+            type: integer
+            format: int32
+          description: Beye lead azonosítók listája
+          minItems: 1
+    KalkulacioElem:
+      type: object
+      required:
+        - kalkulacioElemId
+        - leadId
+      properties:
+        kalkulacioElemId:
+          type: integer
+          format: int64
+          description: Kalkulációs elem egyedi azonosítója
+          readOnly: true
+        leadId:
+          type: integer
+          format: int64
+          description: Lead azonosító
+        beszerzesiForras:
+          type: [string, "null"]
+          maxLength: 2000
+          description: Beszerzési forrás
+        beyeCreatedOn:
+          type: [string, "null"]
+          format: date-time
+          description: Beye rendszerben létrehozás időpontja
+        beyeLastUpdatedOn:
+          type: [string, "null"]
+          format: date-time
+          description: Beye rendszerben utolsó módosítás időpontja
+        beyeLeadId:
+          type: [integer, "null"]
+          format: int32
+          description: Beye rendszerbeli lead azonosító
+        excelParentHeaderId:
+          type: [integer, "null"]
+          format: int32
+          description: Excel szülő fejléc azonosító
+        excelOrderNr:
+          type: [integer, "null"]
+          format: int32
+          description: Excel sorrend szám
+        excelCalculationId:
+          type: [integer, "null"]
+          format: int32
+          description: Excel kalkuláció azonosító
+        excelRowType:
+          type: [string, "null"]
+          maxLength: 20
+          description: "Excel sor típus. Figyelem: HEADER típusú sornál a megjelenítésben szintet kell váltani (groupolás)"
+        gyarto:
+          type: [string, "null"]
+          maxLength: 100
+          description: Gyártó
+          readOnly: true
+        gyartoiCikkszam:
+          type: [string, "null"]
+          maxLength: 100
+          description: Gyártói cikkszám
+        megjegyzes:
+          type: [string, "null"]
+          maxLength: 255
+          description: Megjegyzés
+        megnevezes:
+          type: [string, "null"]
+          maxLength: 255
+          description: Megnevezés
+        mennyiseg:
+          type: [number, "null"]
+          format: double
+          description: Mennyiség
+        pontosTipus:
+          type: [string, "null"]
+          maxLength: 100
+          description: Pontos típus
+        rowId:
+          type: [string, "null"]
+          maxLength: 20
+          description: Sor azonosító
+        serpaCikkszam:
+          type: [string, "null"]
+          maxLength: 100
+          description: Serpa cikkszám
+        termekcsoport:
+          type: [string, "null"]
+          maxLength: 100
+          description: Termékcsoport
+        tervezettGyarto:
+          type: [string, "null"]
+          maxLength: 100
+          description: Tervezett gyártó
+        egysegar:
+          type: [number, "null"]
+          format: double
+          description: Egységár
+        ar:
+          type: [number, "null"]
+          format: double
+          description: Ár
+        deviza:
+          type: [string, "null"]
+          maxLength: 3
+          description: Deviza
+    CreateTervEszkozokRequest:
+      type: object
+      properties:
+        topologiaElemIds:
+          type: array
+          description: Topológia elem azonosítók listája
+          items:
+            type: integer
+            format: int64
+    Keszlet:
+      type: object
+      properties:
+        serpaCikkszamId:
+          type: [integer, "null"]
+          description: Serpa cikkszám azonosító
+        serpaCikkSzam:
+          type: [string, "null"]
+          maxLength: 30
+          description: sERP cikkszám
+        gyartoiCikkszam:
+          type: [string, "null"]
+          maxLength: 30
+          description: Gyártói cikkszám
+        gyarto:
+          type: [string, "null"]
+          maxLength: 20
+          description: Gyártó
+        serpaMegnevezes:
+          type: [string, "null"]
+          maxLength: 100
+          description: sERP megnevezés
+        raktarKod:
+          type: [string, "null"]
+          maxLength: 15
+          description: Raktár kód
+        raktarHelyKod:
+          type: [string, "null"]
+          maxLength: 15
+          description: Raktárhely kód
+        serpaProjectKod:
+          type: [string, "null"]
+          maxLength: 15
+          description: Serpa projekt kód
+        gyariSzam:
+          type: [string, "null"]
+          maxLength: 50
+          description: Gyári szám
+        gyariSzamMegjegyzes:
+          type: [string, "null"]
+          maxLength: 200
+          description: Gyári szám megjegyzés
+        keszlet:
+          type: [number, "null"]
+          format: double
+          description: Készlet mennyiség
+        egyseg:
+          type: [string, "null"]
+          maxLength: 8
+          description: Mértékegység
+        nyilvantartasiEgysegAr:
+          type: [number, "null"]
+          format: double
+          description: Nyilvántartási egységár
+        nyilvantartasiErtek:
+          type: [number, "null"]
+          format: double
+          description: Nyilvántartási érték
+        deviza:
+          type: [string, "null"]
+          maxLength: 3
+          description: Deviza
+        korNap:
+          type: [integer, "null"]
+          description: Kor nap
+        frissitve:
+          type: [string, "null"]
+          format: date-time
+          description: Frissítve dátum
+        raktarUniqueKey:
+          type: [string, "null"]
+          maxLength: 20
+          description: Raktár egyedi kulcs
+        raktarId:
+          type: [integer, "null"]
+          description: Raktár azonosító
+    KeszletOsszesitett:
+      type: object
+      properties:
+        gyariSzam:
+          type: [string, "null"]
+          maxLength: 50
+          description: Gyári szám
+        gyarto:
+          type: [string, "null"]
+          maxLength: 20
+          description: Gyártó
+        gyartoiCikkszam:
+          type: [string, "null"]
+          maxLength: 30
+          description: Gyártói cikkszám
+        serpaCikkSzam:
+          type: [string, "null"]
+          maxLength: 30
+          description: sERP cikkszám
+        serpaMegnevezes:
+          type: [string, "null"]
+          maxLength: 100
+          description: sERP megnevezés
+        keszlet:
+          type: number
+          format: double
+          description: Összesített készlet mennyiség
+    Lead:
+      type: object
+      required:
+        - leadId
+        - projectId
+      properties:
+        leadId:
+          type: integer
+          format: int64
+          description: Lead egyedi azonosítója
+          readOnly: true
+        projectId:
+          type: integer
+          format: int64
+          description: Projekt azonosító
+        beyeProjectId:
+          type: [integer, "null"]
+          format: int32
+          description: Beye rendszerbeli projekt azonosító
+        beyeLeadId:
+          type: [integer, "null"]
+          format: int32
+          description: Beye rendszerbeli lead azonosító
+        beyeLastUpdatedOn:
+          type: [string, "null"]
+          format: date-time
+          description: Beye rendszerben utolsó módosítás időpontja
+        leadMegnevezes:
+          type: [string, "null"]
+          maxLength: 255
+          description: Lead megnevezése
+        leadSubject:
+          type: [string, "null"]
+          maxLength: 255
+          description: Lead tárgya
+        leadImportalva:
+          type: [boolean, "null"]
+          description: Lead importálva
+    Projekt:
+      type: object
+      required:
+        - projektId
+        - ugyfelId
+      properties:
+        projektId:
+          type: integer
+          format: int64
+          description: Projekt egyedi azonosítója
+          readOnly: true
+        ugyfelId:
+          type: integer
+          format: int64
+          description: Ügyfél azonosító
+          readOnly: true
+        topologiaId:
+          type: [integer, "null"]
+          format: int64
+          description: Topológia azonosító
+          readOnly: true
+        aktivProjekt:
+          type: [boolean, "null"]
+          description: Aktív projekt
+        beyeProjectId:
+          type: [integer, "null"]
+          format: int32
+          description: Beye rendszerbeli projekt azonosító
+        beyeProjectKod:
+          type: [string, "null"]
+          maxLength: 255
+          description: Beye projekt kód
+        beyeProjectNev:
+          type: [string, "null"]
+          maxLength: 500
+          description: Beye projekt neve
+        serpaProjectId:
+          type: [integer, "null"]
+          format: int32
+          description: Serpa rendszerbeli projekt azonosító
+        serpaProjectKod:
+          type: [string, "null"]
+          maxLength: 20
+          description: Serpa projekt kód
+        serpaProjectNev:
+          type: [string, "null"]
+          maxLength: 100
+          description: Serpa projekt neve
+    Topologia:
+      allOf:
+        - $ref: '#/components/schemas/TopologiaBase'
+        - type: object
+          properties:
+            ugyfelek:
+              type: [array, "null"]
+              items:
+                $ref: '#/components/schemas/Ugyfel'
+              description: Ügyfél lista
+              readOnly: true
+            projektek:
+              type: [array, "null"]
+              items:
+                $ref: '#/components/schemas/Projekt'
+              description: Projekt lista
+              readOnly: true
+    TopologiaBase:
+      type: object
+      required:
+        - topologiaId
+        - megnevezes
+      properties:
+        topologiaId:
+          type: integer
+          format: int64
+          description: Topológia egyedi azonosítója
+          readOnly: true
+        kod:
+          type: [string, "null"]
+          maxLength: 50
+          description: Kód
+        megnevezes:
+          type: string
+          maxLength: 255
+          description: Megnevezés
+    TopologiaUpdate:
+      type: object
+      required:
+        - megnevezes
+      properties:
+        kod:
+          type: [string, "null"]
+          maxLength: 50
+          description: Kód
+        megnevezes:
+          type: string
+          maxLength: 255
+          description: Megnevezés
+    TopologiaCreate:
+      allOf:
+        - $ref: '#/components/schemas/Topologia'
+        - type: object
+          required:
+            - ugyfelId
+            - projektId
+          properties:
+            ugyfelId:
+              type: integer
+              format: int64
+              description: Ügyfél azonosító
+            projektId:
+              type: integer
+              format: int64
+              description: Projekt azonosító
+    TopologiaElemBase:
+      type: object
+      required:
+        - megnevezes
+      properties:
+        szuloTopologiaElemId:
+          type: [integer, "null"]
+          format: int64
+          description: Szülő topológia elem azonosító
+        beszedesMegnevezes:
+          type: [string, "null"]
+          maxLength: 255
+          description: Beszédes megnevezés
+        cim:
+          type: [string, "null"]
+          maxLength: 500
+          description: Cím
+        epiteszetiMegnevezes:
+          type: [string, "null"]
+          maxLength: 255
+          description: Építészeti megnevezés
+        megnevezes:
+          type: string
+          maxLength: 255
+          description: Megnevezés
+        raktar:
+          type: [boolean, "null"]
+          description: Raktár
+        sorrend:
+          type: [number, "null"]
+          format: double
+          description: Sorrend
+        teremTipus:
+          type: [string, "null"]
+          maxLength: 100
+          description: Terem típus
+        topologiaElemTipus:
+          type: [string, "null"]
+          maxLength: 100
+          description: Topológia elem típus
+    TopologiaElemUpdate:
+      $ref: '#/components/schemas/TopologiaElemBase'
+    Ugyfel:
+      type: object
+      required:
+        - ugyfelId
+        - beyeUgyfelId
+        - nev
+      properties:
+        ugyfelId:
+          type: integer
+          format: int64
+          description: Ügyfél egyedi azonosítója
+          readOnly: true
+        beyeUgyfelId:
+          type: integer
+          format: int32
+          description: Beye rendszerbeli ügyfél azonosító
+        nev:
+          type: string
+          maxLength: 255
+          description: Ügyfél teljes neve
+        rovidNev:
+          type: [string, "null"]
+          maxLength: 20
+          description: Ügyfél rövid neve
+  # Composite Schemas
+    LeadWithKalkulacioElemek:
+      allOf:
+        - $ref: '#/components/schemas/Lead'
+        - type: object
+          properties:
+            kalkulacioElemek:
+              type: array
+              description: Leadhez tartozó kalkulációs elemek listája
+              items:
+                $ref: '#/components/schemas/KalkulacioElem'
+    ProjektWithLeads:
+      allOf:
+        - $ref: '#/components/schemas/Projekt'
+        - type: object
+          properties:
+            leads:
+              type: array
+              description: Projekthez tartozó leadek listája
+              items:
+                $ref: '#/components/schemas/Lead'
+    ProjektWithLeadsAndKalkulacio:
+      allOf:
+        - $ref: '#/components/schemas/Projekt'
+        - type: object
+          properties:
+            leads:
+              type: array
+              description: Projekthez tartozó leadek kalkulációs elemekkel
+              items:
+                $ref: '#/components/schemas/LeadWithKalkulacioElemek'
+    ProjektWithTopologia:
+      allOf:
+        - $ref: '#/components/schemas/Projekt'
+        - type: object
+          properties:
+            topologia:
+              anyOf:
+                - $ref: '#/components/schemas/TopologiaWithElemek'
+                - type: "null"
+              description: Projekthez tartozó topológia elemekkel (ha van)
+    TopologiaElem:
+      allOf:
+        - $ref: '#/components/schemas/TopologiaElemBase'
+        - type: object
+          required:
+            - topologiaElemId
+            - topologiaId
+          properties:
+            topologiaElemId:
+              type: integer
+              format: int64
+              description: Topológia elem egyedi azonosítója
+              readOnly: true
+            topologiaId:
+              type: integer
+              format: int64
+              description: Topológia azonosító
+    TopologiaWithElemek:
+      allOf:
+        - $ref: '#/components/schemas/TopologiaBase'
+        - type: object
+          properties:
+            topologiaElemek:
+              type: array
+              description: Topológiához tartozó elemek listája
+              items:
+                $ref: '#/components/schemas/TopologiaElem'
+    UgyfelWithProjektek:
+      allOf:
+        - $ref: '#/components/schemas/Ugyfel'
+        - type: object
+          properties:
+            projektek:
+              type: array
+              description: Ügyfélhez tartozó projektek listája
+              items:
+                $ref: '#/components/schemas/ProjektWithLeads'
+    UgyfelWithProjektekAndKalkulacio:
+      allOf:
+        - $ref: '#/components/schemas/Ugyfel'
+        - type: object
+          properties:
+            projektek:
+              type: array
+              description: Ügyfélhez tartozó projektek leadekkel és kalkulációs elemekkel
+              items:
+                $ref: '#/components/schemas/ProjektWithLeadsAndKalkulacio'
+    UgyfelWithTopologiak:
+      allOf:
+        - $ref: '#/components/schemas/Ugyfel'
+        - type: object
+          properties:
+            topologiak:
+              type: array
+              description: Ügyfélhez tartozó topológiák listája
+              items:
+                $ref: '#/components/schemas/TopologiaBase'
+  # Response Schemas
+    KeszletPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          oneOf:
+            - type: array
+              items:
+                $ref: '#/components/schemas/Keszlet'
+            - type: array
+              items:
+                $ref: '#/components/schemas/KeszletOsszesitett'
+          description: Készlet elemek listája (típus függ tetelesLista flag-től)
+    UgyfelPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ugyfel'
+          description: Ügyfél elemek listája
+    UgyfelWithProjektekPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UgyfelWithProjektek'
+          description: Ügyfelek projektek és leadek hierarchiával
+
+    UgyfelWithProjektekAndKalkulacioPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/UgyfelWithProjektekAndKalkulacio'
+          description: Ügyfelek projektekkel, leadekkel és kalkulációs elemekkel
+
+    ProjektPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Projekt'
+          description: Projektek listája
+
+    TopologiaPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Topologia'
+          description: Topológiák listája
+
+    AtvevoPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Atvevo'
+          description: Átvevők listája
+
+    FelhasznaloBeallitasPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FelhasznaloBeallitas'
+          description: Felhasználói beállítások listája
+
+    KalkulacioElemPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/KalkulacioElem'
+          description: Kalkulációs elemek listája
+
+    PageInfo:
+      type: object
+      required:
+        - totalCount
+        - page
+        - rules
+      properties:
+        totalCount:
+          type: integer
+          format: int64
+          description: Összes találat száma (szűrés után)
+        page:
+          type: integer
+          description: Aktuális oldalszám
+        rules:
+          type: object
+          required:
+            - maxPageSize
+          properties:
+            maxPageSize:
+              type: integer
+              description: Maximális oldalméret
+    KalkulacioElemTopologiakResponse:
+      type: object
+      required:
+        - kalkulacioElemId
+        - topologiak
+      properties:
+        kalkulacioElemId:
+          type: integer
+          format: int64
+          description: A kalkulációs elem azonosítója amelyhez a topológiák tartoznak
+        leadId:
+          type: [integer, "null"]
+          format: int32
+          description: A kapcsolódó lead azonosítója (opcionális kontextus)
+        projektId:
+          type: [integer, "null"]
+          format: int64
+          description: A kapcsolódó projekt azonosítója (opcionális kontextus)
+        topologiak:
+          type: array
+          description: A kalkulációs elemhez tartozó topológiák listája topológia elemekkel
+          items:
+            $ref: '#/components/schemas/TopologiaWithElemek'
+    TervEszkozokCreatedResponse:
+      type: object
+      properties:
+        info:
+          type: array
+          description: Információs üzenetek a terv eszközök létrehozásáról
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Információs üzenet
+              code:
+                type: string
+                description: Üzenet kód (opcionális)
+  responses: {}
+  parameters: {}
+  securitySchemes: {}

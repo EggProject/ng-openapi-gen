@@ -233,6 +233,11 @@
       "default": false,
       "type": "boolean"
     },
+    "noOptionalMarker": {
+      "description": "When true, optional properties will be generated without the '?' marker (e.g., 'field: type' instead of 'field?: type'). Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
     "customizedResponseType": {
       "type": "object",
       "description": "Defines which paths to use which responseType, commonly used when build-in deduction can't fullfill your needs",

@@ -13,10 +13,10 @@ import { {{@root.requestBuilderClass}} } from '{{pathToRoot}}{{@root.requestBuil
 
 export interface {{paramsType}} {
 {{#operation.parameters}}
-{{{tsComments}}}  {{{var}}}{{^required}}?{{/required}}: {{{type}}};{{#tsComments}}{{/tsComments}}
+{{{tsComments}}}  {{{var}}}{{^required}}{{^@root.options.noOptionalMarker}}?{{/@root.options.noOptionalMarker}}{{/required}}: {{{type}}};{{#tsComments}}{{/tsComments}}
 {{/operation.parameters}}
 {{#requestBody}}
-  {{{../operation.requestBody.tsComments}}}body{{^../operation.requestBody.required}}?{{/../operation.requestBody.required}}: {{{type}}}
+  {{{../operation.requestBody.tsComments}}}body{{^../operation.requestBody.required}}{{^@root.options.noOptionalMarker}}?{{/@root.options.noOptionalMarker}}{{/../operation.requestBody.required}}: {{{type}}}
 {{/requestBody}}
 }
 

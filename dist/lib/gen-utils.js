@@ -285,7 +285,7 @@ function rawTsType(schema, options, openApi, container) {
             }
             result += `'${propName}'`;
             const propRequired = required && required.includes(propName);
-            if (!propRequired) {
+            if (!propRequired && !options.noOptionalMarker) {
                 result += '?';
             }
             const propertyType = tsType(property, options, openApi, container);
