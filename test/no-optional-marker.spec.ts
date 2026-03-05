@@ -42,7 +42,7 @@ genOpsDefault.generate();
 describe('noOptionalMarker option', () => {
 
   describe('model generation (object.handlebars + gen-utils inline)', () => {
-    it('should replace ? with | null for optional properties in interface', () => {
+    it('should remove ? for optional non-nullable properties without adding | null', () => {
       const container = genTypes.models.get('Container');
       expect(container).toBeDefined();
       const ts = genTypes.templates.apply('model', container);
@@ -52,14 +52,22 @@ describe('noOptionalMarker option', () => {
       expect(ts).not.toMatch(/'booleanProp'\?/);
       expect(ts).not.toMatch(/'integerProp'\?/);
 
-      // Optional properties should have | null appended
-      expect(ts).toMatch(/'stringProp': string \| null;/);
-      expect(ts).toMatch(/'booleanProp': boolean \| null;/);
-      expect(ts).toMatch(/'integerProp': number \| null;/);
+      // Non-nullable optional properties should NOT get | null
+      expect(ts).toMatch(/'stringProp': string;/);
+      expect(ts).toMatch(/'booleanProp': boolean;/);
+      expect(ts).toMatch(/'integerProp': number;/);
 
-      // Required properties should NOT have | null added
+      // Required properties unchanged
       expect(ts).toMatch(/'numberProp': number;/);
       expect(ts).toMatch(/'refEnumProp': RefEnum;/);
+    });
+
+    it('should preserve existing | null for nullable properties', () => {
+      const container = genTypes.models.get('Container');
+      const ts = genTypes.templates.apply('model', container);
+
+      // Properties that are already nullable in the schema should keep | null
+      expect(ts).toMatch(/'nullableObject': NullableObject \| null;/);
     });
 
     it('should still emit ? when noOptionalMarker is false/default', () => {
@@ -71,7 +79,7 @@ describe('noOptionalMarker option', () => {
       expect(ts).toMatch(/'booleanProp'\?/);
     });
 
-    it('should replace ? with | null in inline object types (gen-utils)', async () => {
+    it('should remove ? in inline object types (gen-utils)', async () => {
       const inlineObj = genTypes.models.get('InlineObject');
       expect(inlineObj).toBeDefined();
       const ts = genTypes.templates.apply('model', inlineObj);
@@ -79,61 +87,35 @@ describe('noOptionalMarker option', () => {
       const ast = await parser.parseSource(ts);
       const decl = ast.declarations[0] as InterfaceDeclaration;
       const prop = decl.properties[0];
-      // The inline object type should not contain ? but should have | null
+      // The inline object type should not contain ?
       expect(prop.type).not.toContain('?');
-      expect(prop.type).toContain('| null');
     });
 
-    it('should replace ? with | null in allOf inline properties (gen-utils)', () => {
+    it('should remove ? in allOf inline properties (gen-utils)', () => {
       const auditCdr = genTypes.models.get('AuditCdr');
       expect(auditCdr).toBeDefined();
       const ts = genTypes.templates.apply('model', auditCdr);
-      // Should not have ? for optional allOf inline properties
       expect(ts).not.toMatch(/'callFrom'\?/);
       expect(ts).not.toMatch(/'callTo'\?/);
-      // Should have | null instead
-      expect(ts).toMatch(/'callFrom': string \| null/);
-      expect(ts).toMatch(/'callTo': string \| null/);
-    });
-
-    it('should never produce double | null for already nullable types', () => {
-      for (const [, model] of genTypes.models) {
-        const ts = genTypes.templates.apply('model', model);
-        expect(ts).not.toMatch(/\| null[^;]*\| null/);
-      }
+      // Non-nullable properties should NOT get | null
+      expect(ts).toMatch(/'callFrom': string;/);
+      expect(ts).toMatch(/'callTo': string;/);
     });
   });
 
   describe('function generation (fn.handlebars)', () => {
-    it('should replace ? with | null for optional parameters in function params interface', () => {
+    it('should remove ? for optional parameters in function params interface', () => {
       for (const [, service] of genOps.services) {
         for (const op of service.operations) {
           for (const variant of op.variants) {
             const ts = genOps.templates.apply('fn', variant);
             const paramsMatch = ts.match(/export interface \w+\$Params \{([\s\S]*?)\}/);
             if (paramsMatch) {
-              // No parameter should have ?
               expect(paramsMatch[1]).not.toContain('?:');
             }
           }
         }
       }
-    });
-
-    it('should add | null for optional parameters in function params interface', () => {
-      let foundNullUnion = false;
-      for (const [, service] of genOps.services) {
-        for (const op of service.operations) {
-          for (const variant of op.variants) {
-            const ts = genOps.templates.apply('fn', variant);
-            const paramsMatch = ts.match(/export interface \w+\$Params \{([\s\S]*?)\}/);
-            if (paramsMatch && paramsMatch[1].includes('| null')) {
-              foundNullUnion = true;
-            }
-          }
-        }
-      }
-      expect(foundNullUnion).toBe(true);
     });
 
     it('should emit ? for optional parameters when noOptionalMarker is false', () => {

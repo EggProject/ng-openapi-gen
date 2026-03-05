@@ -29,9 +29,6 @@ export class Parameter {
     this.in = (spec.in || 'query') as ParameterLocation;
     this.required = this.in === 'path' || spec.required || false;
     this.type = tsType(spec.schema, options, openApi);
-    if (!this.required && options.noOptionalMarker && !this.type.includes('null')) {
-      this.type = `${this.type} | null`;
-    }
     this.style = spec.style;
     this.explode = spec.explode;
     this.parameterOptions = this.createParameterOptions();

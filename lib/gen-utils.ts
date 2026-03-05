@@ -299,11 +299,7 @@ function rawTsType(schema: SchemaObject, options: Options, openApi: OpenAPIObjec
         result += '?';
       }
       const propertyType = tsType(property, options, openApi, container);
-      if (!propRequired && options.noOptionalMarker && !propertyType.includes('null')) {
-        result += `: ${propertyType} | null;\n`;
-      } else {
-        result += `: ${propertyType};\n`;
-      }
+      result += `: ${propertyType};\n`;
     }
     if (schema.additionalProperties) {
       const additionalProperties = schema.additionalProperties === true ? {} : schema.additionalProperties;
