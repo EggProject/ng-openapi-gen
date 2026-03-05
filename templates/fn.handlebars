@@ -16,7 +16,7 @@ export interface {{paramsType}} {
 {{{tsComments}}}  {{{var}}}{{^required}}{{^@root.options.noOptionalMarker}}?{{/@root.options.noOptionalMarker}}{{/required}}: {{{type}}};{{#tsComments}}{{/tsComments}}
 {{/operation.parameters}}
 {{#requestBody}}
-  {{{../operation.requestBody.tsComments}}}body{{^../operation.requestBody.required}}{{^@root.options.noOptionalMarker}}?{{/@root.options.noOptionalMarker}}{{/../operation.requestBody.required}}: {{{type}}}
+  {{{../operation.requestBody.tsComments}}}body{{^../operation.requestBody.required}}{{^@root.options.noOptionalMarker}}?{{/@root.options.noOptionalMarker}}{{/../operation.requestBody.required}}: {{{type}}}{{^../operation.requestBody.required}}{{#@root.options.noOptionalMarker}} | null{{/@root.options.noOptionalMarker}}{{/../operation.requestBody.required}}
 {{/requestBody}}
 }
 

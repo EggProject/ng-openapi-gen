@@ -16,6 +16,9 @@ class Parameter {
         this.in = (spec.in || 'query');
         this.required = this.in === 'path' || spec.required || false;
         this.type = (0, gen_utils_1.tsType)(spec.schema, options, openApi);
+        if (!this.required && options.noOptionalMarker && !this.type.includes('null')) {
+            this.type = `${this.type} | null`;
+        }
         this.style = spec.style;
         this.explode = spec.explode;
         this.parameterOptions = this.createParameterOptions();
