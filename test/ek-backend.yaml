@@ -2,7 +2,7 @@
 openapi: 3.1.0
 info:
   title: EK Backend API
-  version: 1.0.11
+  version: 1.0.17
   description: API dokumentáció az EK Backend szolgáltatáshoz
 servers:
   - url: http://localhost:8080
@@ -18,10 +18,16 @@ tags:
     description: Kalkulációs elemek kezelése
   - name: keszlet
     description: Készlet adatok lekérdezése
+  - name: kodtabla
+    description: Kódtábla kezelés
   - name: projekt
     description: Projekt és Lead kezelés
+  - name: terveszkoz
+    description: Terv eszköz kezelés
   - name: topologia
     description: Topológia kezelés
+  - name: topologiaelem-terveszkoz-lista
+    description: Topológia elemek terv eszköz listájának kezelése
   - name: ugyfel
     description: Ügyfél kezelés
 paths:
@@ -356,20 +362,116 @@ paths:
       tags:
         - kalkulacio
       summary: Kalkulációs elemek lekérdezése lead azonosítók alapján (lapozással)
-      description: Ügyfelek lekérdezése projektek, leadek és kalkulációs elemek beágyazásával lead azonosítók alapján
+      description: |
+        Ügyfelek lekérdezése projektek, leadek és kalkulációs elemek beágyazásával lead azonosítók alapján.
+        
+        **Pagination stratégia:**
+        - Ugyfel szint: DB-level pagination (max 100/page)
+        - KalkulacioElem szint: Memory-level (ALL filtered elements for requested Leads)
+        
+        **Performance ajánlások:**
+        - **Ajánlott:** max 5 beyeLeadId/request
+        - **Maximum:** 10 beyeLeadId/request (API limit)
+        - Használj szűrőket (gyarto, termekcsoport, stb.) a KalkulacioElem méret csökkentéséhez
       operationId: getKalkulacio
       parameters:
         - name: beyeLeadId
           in: query
-          description: "Beye lead azonosítók vesszővel elválasztva (pl: 123,456,789)"
+          description: |
+            Beye lead azonosítók vesszővel elválasztva (pl: 123,456,789)
+            
+            **Ajánlott maximum:** 5 lead ID
+            **Technikai limit:** 10 lead ID
           required: true
           schema:
             type: array
             items:
               type: integer
               format: int32
+            minItems: 1
+            maxItems: 10
           style: form
           explode: false
+        - name: beszerzesiForras
+          in: query
+          description: Beszerzési forrás szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: excelParentHeaderId
+          in: query
+          description: Excel parent header ID szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: excelRowType
+          in: query
+          description: Excel sor típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: gyarto
+          in: query
+          description: Gyártó szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: gyartoiCikkszam
+          in: query
+          description: Gyártói cikkszám szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: megnevezes
+          in: query
+          description: Megnevezés szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: pontosTipus
+          in: query
+          description: Pontos típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: serpaCikkszam
+          in: query
+          description: SERPA cikkszám szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: termekcsoport
+          in: query
+          description: Termékcsoport szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: tervezettGyarto
+          in: query
+          description: Tervezett gyártó szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: deviza
+          in: query
+          description: Deviza szűrési feltétel (ISO 3-betűs kód)
+          required: false
+          schema:
+            type: string
+        - name: includeParentRows
+          in: query
+          description: >
+            Ha true, a válasz tartalmazza azokat a szülő elemeket is,
+            amelyeknek van olyan gyerek eleme (excel_parent_header_id = szülő.excel_calculation_id kapcsolaton keresztül),
+            amely megfelel a megadott szűrési feltételeknek.
+            Default: false (csak a közvetlenül megfelelő elemek).
+            FIGYELEM: A KalkulacioElem szűrés NINCS lapozva a hierarchián belül!
+            Az aktuális oldal ÖSSZES Ugyfel-jéhez tartozó ÖSSZES szűrt KalkulacioElem
+            egyszerre kerül lekérdezésre.
+          required: false
+          schema:
+            type: boolean
+            default: false
         - name: page
           in: query
           description: Oldalszám (1-től kezdődik)
@@ -566,7 +668,7 @@ paths:
       tags:
         - kalkulacio
       summary: Kalkulációs elemhez, mint header sorhoz tartozó topológia elemek lekérdezése
-      description: Egy kalkulációs elemhez, mint header sorhoz tartozó topológiák és topológia elemek lekérdezése, opcionális szűréssel topológia elem terem típusra
+      description: Egy kalkulációs elemhez, mint header sorhoz tartozó topológiák és topológia elemek lekérdezése, opcionális szűréssel topológia elem helyiseg típusra
       operationId: getKalkulacioElemTopologiaElemek
       parameters:
         - name: id
@@ -576,9 +678,9 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: topologiaElemTeremTipus
+        - name: topologiaElemhelyisegTipus
           in: query
-          description: Topológia elem terem típus szűrési feltétel
+          description: Topológia elem helyiseg típus szűrési feltétel
           required: false
           schema:
             type: string
@@ -632,7 +734,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateTervEszkozokRequest'
       responses:
-        '201':
+        '200':
           description: Terv eszközök sikeresen létrehozva
           content:
             application/json:
@@ -660,6 +762,146 @@ paths:
                     example: "Kalkulációs elem nem található a megadott azonosítóval"
         '500':
           description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /kalkulacioelemek:
+    get:
+      tags:
+        - kalkulacio
+      summary: Kalkulációs elemek lekérdezése (lapozással)
+      description: Kalkulációs elemek lekérdezése projekt kód vagy lead azonosító alapján, opcionális szűrési feltételekkel
+      operationId: getKalkulacioelemek
+      parameters:
+        - name: beyeProjectKod
+          in: query
+          description: "Beye projekt kód szűrési feltétel. FIGYELEM: beyeProjectKod ÉS beyeLeadId közül pontosan egyet kell megadni, mindkettőt együtt nem lehet."
+          required: false
+          schema:
+            type: string
+        - name: beyeLeadId
+          in: query
+          description: "Beye lead azonosító szűrési feltétel. FIGYELEM: beyeProjectKod ÉS beyeLeadId közül pontosan egyet kell megadni, mindkettőt együtt nem lehet."
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: beszerzesiForras
+          in: query
+          description: Beszerzési forrás szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: excelParentHeaderId
+          in: query
+          description: Excel szülő fejléc azonosító szűrési feltétel
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: excelRowType
+          in: query
+          description: Excel sor típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: gyarto
+          in: query
+          description: Gyártó szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: gyartoiCikkszam
+          in: query
+          description: Gyártói cikkszám szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: megnevezes
+          in: query
+          description: Megnevezés szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: pontosTipus
+          in: query
+          description: Pontos típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: serpaCikkszam
+          in: query
+          description: SERPA cikkszám szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: termekcsoport
+          in: query
+          description: Termékcsoport szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: tervezettGyarto
+          in: query
+          description: Tervezett gyártó szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: deviza
+          in: query
+          description: Deviza szűrési feltétel (ISO 3-betűs kód)
+          required: false
+          schema:
+            type: string
+        - name: includeParentRows
+          in: query
+          description: >
+            Ha true, a válasz tartalmazza azokat a szülő elemeket is,
+            amelyeknek van olyan gyerek eleme (excel_parent_header_id = szülő.excel_calculation_id kapcsolaton keresztül),
+            amely megfelel a megadott szűrési feltételeknek.
+            Default: false (csak a közvetlenül megfelelő elemek).
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KalkulacioElemPagedResponse'
+        '400':
+          description: Érvénytelen paraméter vagy validációs hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "A beyeProjectKod vagy a beyeLeadId paraméter megadása kötelező"
+        '500':
+          description: Belső szerverhiba
           content:
             application/json:
               schema:
@@ -762,6 +1004,71 @@ paths:
                   error:
                     type: string
                     example: "Belső szerverhiba történt"
+  /kodtabla:
+    get:
+      tags:
+        - kodtabla
+      summary: Kódtábla lekérdezés (lapozással)
+      description: Kódtábla értékek lekérdezése entitás és/vagy attribútum alapján lapozással
+      operationId: getKodtabla
+      parameters:
+        - name: entitas
+          in: query
+          description: Entitás név szerinti szűrés
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: attributum
+          in: query
+          description: Attribútum név szerinti szűrés
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            default: 100
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KodtablaPagedResponse'
+        '400':
+          description: Hibás kérés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Hibás paraméter"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
   /projekt-lead:
     get:
       tags:
@@ -821,7 +1128,7 @@ paths:
       tags:
         - projekt
       summary: Projekt topológia lekérdezése
-      description: Egy projekthez kapcsolódó topológia lekérdezése az összes topológia elemmel, opcionális szűréssel topológia elem terem típusra
+      description: Egy projekthez kapcsolódó topológia lekérdezése az összes topológia elemmel, opcionális szűréssel topológia elem helyiseg típusra
       operationId: getProjektTopologia
       parameters:
         - name: id
@@ -831,9 +1138,9 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: topologiaElemTeremTipus
+        - name: topologiaElemhelyisegTipus
           in: query
-          description: Topológia elem terem típus szűrési feltétel
+          description: Topológia elem helyiseg típus szűrési feltétel
           required: false
           schema:
             type: string
@@ -999,6 +1306,196 @@ paths:
                   error:
                     type: string
                     example: "Az idobelyegTol paraméter kötelező"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /terveszkozok:
+    get:
+      tags:
+        - terveszkoz
+      summary: Terv eszközök lekérdezése (lapozással)
+      description: Terv eszközök lekérdezése projekt kód vagy lead azonosító alapján, opcionális szűrési feltételekkel
+      operationId: getTervEszkozok
+      parameters:
+        - name: beyeProjectKod
+          in: query
+          description: "Beye projekt kód szűrési feltétel. FIGYELEM: beyeProjectKod ÉS beyeLeadId közül pontosan egyet kell megadni, mindkettőt együtt nem lehet."
+          required: false
+          schema:
+            type: string
+        - name: beyeLeadId
+          in: query
+          description: "Beye lead azonosító szűrési feltétel. FIGYELEM: beyeProjectKod ÉS beyeLeadId közül pontosan egyet kell megadni, mindkettőt együtt nem lehet."
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: topologiaElemId
+          in: query
+          description: Topológia elem azonosító szűrési feltétel
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: customerDevice
+          in: query
+          description: Ügyfél eszköz szűrési feltétel (boolean)
+          required: false
+          schema:
+            type: boolean
+        - name: hostname
+          in: query
+          description: Hostname szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: ipAdress
+          in: query
+          description: IP cím szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: kalkulacioAllapotban
+          in: query
+          description: Kalkulációs állapot szűrési feltétel (boolean)
+          required: false
+          schema:
+            type: boolean
+        - name: megnevezes
+          in: query
+          description: Megnevezés szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: pontosTipus
+          in: query
+          description: Pontos típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: serpaCikkszamId
+          in: query
+          description: SERPA cikkszám azonosító szűrési feltétel
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: serpaCikkszam
+          in: query
+          description: SERPA cikkszám szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: serpaMegnevezes
+          in: query
+          description: SERPA megnevezés szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: gyarto
+          in: query
+          description: Gyártó szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: gyartoiCikkszam
+          in: query
+          description: Gyártói cikkszám szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: tervezettGyarto
+          in: query
+          description: Tervezett gyártó szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: tervezettGyartoiCikkszam
+          in: query
+          description: Tervezett gyártói cikkszám szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TervEszkozPagedResponse'
+        '400':
+          description: Hibás kérés - pontosan az egyik query paramétert kell megadni (beyeProjectKod VAGY beyeLeadId), mindkettőt együtt vagy egyiket sem nem lehet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Pontosan az egyik paramétert kell megadni: beyeProjectKod vagy beyeLeadId"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
+  /terveszkoz/{id}:
+    get:
+      tags:
+        - terveszkoz
+      summary: Terv eszköz lekérdezése azonosító alapján
+      description: Egyedi terv eszköz lekérdezése azonosító alapján, Cikktörzs adatokkal dúsítva (gyarto, gyartoiCikkszam, serpaCikkszam, serpaMegnevezes, serpaMegjegyzes)
+      operationId: getTervEszkoz
+      parameters:
+        - name: id
+          in: path
+          description: Terv eszköz egyedi azonosítója
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TervEszkoz'
+        '404':
+          description: Terv eszköz nem található
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Terv eszköz nem található a megadott azonosítóval"
         '500':
           description: Szerver hiba
           content:
@@ -1693,6 +2190,9 @@ paths:
                   type: [integer, "null"]
                   format: int64
                   description: Új szülő topológia elem azonosító (null esetén gyökérszintre kerül)
+                sorrend:
+                  type: [number, "null"]
+                  description: Topológia elem sorrendje a szülő elem gyerekei között (null esetén a végére kerül)
       responses:
         '200':
           description: Topológia elem sikeresen mozgatva
@@ -1722,6 +2222,181 @@ paths:
                     example: "Topológia elem nem található a megadott azonosítóval"
         '500':
           description: Szerver hiba
+  /topologiaelem-terveszkoz-lista:
+    get:
+      tags:
+        - topologiaelem-terveszkoz-lista
+      summary: Topológia elemek terv eszközökkel (lapozással)
+      description: >-
+        Vegyes hierarchikus lista: topológia elemek, mindegyik alatt a hozzá tartozó terv eszközökkel.
+        A beyeLeadId vagy beyeProjektKod paraméterek egyikét kötelező megadni.
+        Az includeSzulok=true esetén a szülő topológia elemek is visszaadásra kerülnek (üres tervEszkozok listával).
+      operationId: getTopologiaElemTervEszkozLista
+      parameters:
+        - name: beyeLeadId
+          in: query
+          description: "Beye lead azonosító. FIGYELEM: beyeLeadId ÉS beyeProjektKod közül pontosan egyet kell megadni."
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: beyeProjektKod
+          in: query
+          description: "Beye projekt kód. FIGYELEM: beyeLeadId ÉS beyeProjektKod közül pontosan egyet kell megadni."
+          required: false
+          schema:
+            type: string
+        - name: includeSzulok
+          in: query
+          description: Szülő topológia elemek visszaadása (igaz esetén a szülők üres tervEszkozok listával jelennek meg)
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: topelemMegnevezes
+          in: query
+          description: Topológia elem megnevezés szűrési feltétel (részleges egyezés)
+          required: false
+          schema:
+            type: string
+        - name: topelemTipus
+          in: query
+          description: Topológia elem típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: topelemHelyisegTipus
+          in: query
+          description: helyiseg típus szűrési feltétel
+          required: false
+          schema:
+            type: string
+        - name: topelemRaktar
+          in: query
+          description: Raktár jelző szűrési feltétel
+          required: false
+          schema:
+            type: boolean
+        - name: terveszCustomerDevice
+          in: query
+          description: Ügyfél eszköz szűrési feltétel (TervEszkoz)
+          required: false
+          schema:
+            type: boolean
+        - name: terveszHostname
+          in: query
+          description: Hostname szűrési feltétel (TervEszkoz)
+          required: false
+          schema:
+            type: string
+        - name: terveszIpAdress
+          in: query
+          description: IP cím szűrési feltétel (TervEszkoz)
+          required: false
+          schema:
+            type: string
+        - name: terveszKalkulacioAllapotban
+          in: query
+          description: Kalkulációs állapot szűrési feltétel (TervEszkoz, boolean)
+          required: false
+          schema:
+            type: boolean
+        - name: terveszMegnevezes
+          in: query
+          description: Terv eszköz megnevezés szűrési feltétel (részleges egyezés)
+          required: false
+          schema:
+            type: string
+        - name: terveszPontosTipus
+          in: query
+          description: Pontos típus szűrési feltétel (TervEszkoz)
+          required: false
+          schema:
+            type: string
+        - name: terveszSerpaCikkszamId
+          in: query
+          description: SERPA cikkszám azonosító szűrési feltétel (TervEszkoz)
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: terveszSerpaCikkszam
+          in: query
+          description: SERPA cikkszám szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: terveszSerpaMegnevezes
+          in: query
+          description: SERPA megnevezés szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: terveszGyarto
+          in: query
+          description: Gyártó szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: terveszGyartoiCikkszam
+          in: query
+          description: Gyártói cikkszám szűrési feltétel (Cikktörzs alapján)
+          required: false
+          schema:
+            type: string
+        - name: terveszTervezettGyarto
+          in: query
+          description: Tervezett gyártó szűrési feltétel (TervEszkoz)
+          required: false
+          schema:
+            type: string
+        - name: terveszTervezettGyartoiCikkszam
+          in: query
+          description: Tervezett gyártói cikkszám szűrési feltétel (TervEszkoz)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Oldalszám (1-től kezdődik)
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          description: Elemek száma oldalanként
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Sikeres lekérdezés
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopologiaElemTervEszkozListaPagedResponse'
+        '400':
+          description: Hibás kérés - pontosan az egyik query paramétert kell megadni (beyeLeadId VAGY beyeProjektKod)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Pontosan az egyik paramétert kell megadni: beyeLeadId vagy beyeProjektKod"
+        '500':
+          description: Szerver hiba
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Belső szerverhiba történt"
   /ugyfelek:
     get:
       tags:
@@ -1932,6 +2607,15 @@ components:
             format: int32
           description: Beye lead azonosítók listája
           minItems: 1
+    InfoMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Információs üzenet
+        code:
+          type: string
+          description: Üzenet kód (opcionális)
     KalkulacioElem:
       type: object
       required:
@@ -2012,6 +2696,11 @@ components:
           type: [string, "null"]
           maxLength: 100
           description: Serpa cikkszám
+        serpaMegnevezes:
+          type: [string, "null"]
+          maxLength: 100
+          description: Serpa megnevezés (Cikktörzs alapján dúsítva)
+          readOnly: true
         termekcsoport:
           type: [string, "null"]
           maxLength: 100
@@ -2144,6 +2833,28 @@ components:
           type: number
           format: double
           description: Összesített készlet mennyiség
+    Kodtabla:
+      type: object
+      required:
+        - kodtablaId
+      properties:
+        kodtablaId:
+          type: integer
+          format: int64
+          description: Kódtábla elem egyedi azonosítója
+          readOnly: true
+        entitas:
+          type: [string, "null"]
+          maxLength: 100
+          description: Entitás neve
+        ertek:
+          type: [string, "null"]
+          maxLength: 100
+          description: Kód érték
+        attributum:
+          type: [string, "null"]
+          maxLength: 100
+          description: Attribútum neve
     Lead:
       type: object
       required:
@@ -2182,6 +2893,11 @@ components:
         leadImportalva:
           type: [boolean, "null"]
           description: Lead importálva
+        kalkulacioElemSorokSzama:
+          type: [integer, "null"]
+          format: int32
+          description: Lead-hez kapcsolt kalkulációs elemek száma
+          readOnly: true
     Projekt:
       type: object
       required:
@@ -2230,6 +2946,188 @@ components:
           type: [string, "null"]
           maxLength: 100
           description: Serpa projekt neve
+    TervEszkoz:
+      type: object
+      required:
+        - id
+        - leadId
+        - megnevezes
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Terv eszköz egyedi azonosító
+        leadId:
+          type: integer
+          format: int64
+          description: Lead azonosító
+        kalkulacioElemExcelCalculationId:
+          type: [string, "null"]
+          maxLength: 100
+          description: Kalkulációs elem Excel kalkuláció azonosító
+        topologiaElemId:
+          type: [integer, "null"]
+          format: int64
+          description: Topológia elem azonosító
+        cableName:
+          type: [string, "null"]
+          maxLength: 100
+          description: Kábel neve
+        customerDevice:
+          type: [boolean, "null"]
+          description: Ügyfél eszköz
+        defaultGateway:
+          type: [string, "null"]
+          maxLength: 100
+          description: Alapértelmezett átjáró
+        elhelyezesHelye:
+          type: [string, "null"]
+          maxLength: 255
+          description: Elhelyezés helye
+        ethernetRequired:
+          type: [boolean, "null"]
+          description: Ethernet szükséges
+        excelOrderNr:
+          type: [integer, "null"]
+          format: int32
+          description: Excel sorszám
+        firmwareUpdateRequired:
+          type: [boolean, "null"]
+          description: Firmware frissítés szükséges
+        hostname:
+          type: [string, "null"]
+          maxLength: 100
+          description: Hostname
+        ipAddress:
+          type: [string, "null"]
+          maxLength: 100
+          description: IP cím
+        kalkulacioAllapotban:
+          type: [boolean, "null"]
+          description: Kalkuláció állapotban
+        master:
+          type: [boolean, "null"]
+          description: Master eszköz
+        masterRow:
+          type: [boolean, "null"]
+          description: Master sor
+        megjegyzes:
+          type: [string, "null"]
+          maxLength: 255
+          description: Megjegyzés
+        megnevezes:
+          type: string
+          maxLength: 255
+          description: Megnevezés
+        mennyiseg:
+          type: [number, "null"]
+          format: decimal
+          description: Mennyiség
+        patchPort1:
+          type: [string, "null"]
+          maxLength: 100
+          description: Patch port 1
+        patchPort2:
+          type: [string, "null"]
+          maxLength: 100
+          description: Patch port 2
+        poeBudget:
+          type: [integer, "null"]
+          format: int32
+          description: PoE budget
+        poeRequired:
+          type: [boolean, "null"]
+          description: PoE szükséges
+        pontosTipus:
+          type: [string, "null"]
+          maxLength: 100
+          description: Pontos típus
+        portReplicator:
+          type: [string, "null"]
+          maxLength: 100
+          description: Port replikátor
+        portType:
+          type: [string, "null"]
+          maxLength: 100
+          description: Port típus
+        rugalmasMezo1:
+          type: [string, "null"]
+          maxLength: 100
+          description: Rugalmas mező1
+        rugalmasMezo2:
+          type: [string, "null"]
+          maxLength: 100
+          description: Rugalmas mező2
+        rugalmasMezo3:
+          type: [string, "null"]
+          maxLength: 100
+          description: Rugalmas mező3
+        rugalmasMezo4:
+          type: [string, "null"]
+          maxLength: 100
+          description: Rugalmas mező4
+        rugalmasMezo5:
+          type: [string, "null"]
+          maxLength: 100
+          description: Rugalmas mező5
+        serpaCikkszamId:
+          type: [integer, "null"]
+          format: int32
+          description: SERPA cikkszám azonosító
+        serpaCikkszam:
+          type: [string, "null"]
+          maxLength: 100
+          description: SERPA cikkszám
+        serpaMegnevezes:
+          type: [string, "null"]
+          maxLength: 100
+          description: SERPA megnevezés
+        serpaMegjegyzes:
+          type: [string, "null"]
+          maxLength: 50
+          description: SERPA megjegyzés
+        gyarto:
+          type: [string, "null"]
+          maxLength: 100
+          description: Gyártó
+        gyartoiCikkszam:
+          type: [string, "null"]
+          maxLength: 100
+          description: Gyártói cikkszám
+        sorrend:
+          type: [number, "null"]
+          format: decimal
+          description: Sorrend
+        subnetMask:
+          type: [string, "null"]
+          maxLength: 100
+          description: Alhálózati maszk
+        switchPort:
+          type: [string, "null"]
+          maxLength: 100
+          description: Switch port
+        tervezettGyarto:
+          type: [string, "null"]
+          maxLength: 100
+          description: Tervezett gyártó
+        tervezettGyartoiCikkszam:
+          type: [string, "null"]
+          maxLength: 100
+          description: Tervezett gyártói cikkszám
+        vlan:
+          type: [string, "null"]
+          maxLength: 100
+          description: VLAN
+        createdAt:
+          type: [string, "null"]
+          format: date-time
+          description: Létrehozás dátuma
+          readOnly: true
+        updatedAt:
+          type: [string, "null"]
+          format: date-time
+          description: Módosítás dátuma
+          readOnly: true
     Topologia:
       allOf:
         - $ref: '#/components/schemas/TopologiaBase'
@@ -2325,12 +3223,11 @@ components:
           description: Raktár
         sorrend:
           type: [number, "null"]
-          format: double
           description: Sorrend
-        teremTipus:
+        helyisegTipus:
           type: [string, "null"]
           maxLength: 100
-          description: Terem típus
+          description: Helyiség típus
         topologiaElemTipus:
           type: [string, "null"]
           maxLength: 100
@@ -2419,6 +3316,19 @@ components:
               type: integer
               format: int64
               description: Topológia azonosító
+    TopologiaElemTervEszkozItem:
+      description: Topológia elem a hozzá tartozó terv eszközökkel
+      allOf:
+        - $ref: '#/components/schemas/TopologiaElem'
+        - type: object
+          required:
+            - tervEszkozok
+          properties:
+            tervEszkozok:
+              type: array
+              description: A topológia elemhez tartozó terv eszközök listája (üres lista ha nincs)
+              items:
+                $ref: '#/components/schemas/TervEszkoz'
     TopologiaWithElemek:
       allOf:
         - $ref: '#/components/schemas/TopologiaBase'
@@ -2503,7 +3413,7 @@ components:
           items:
             $ref: '#/components/schemas/UgyfelWithProjektek'
           description: Ügyfelek projektek és leadek hierarchiával
-
+    
     UgyfelWithProjektekAndKalkulacioPagedResponse:
       type: object
       required:
@@ -2517,7 +3427,7 @@ components:
           items:
             $ref: '#/components/schemas/UgyfelWithProjektekAndKalkulacio'
           description: Ügyfelek projektekkel, leadekkel és kalkulációs elemekkel
-
+    
     ProjektPagedResponse:
       type: object
       required:
@@ -2531,7 +3441,21 @@ components:
           items:
             $ref: '#/components/schemas/Projekt'
           description: Projektek listája
-
+    
+    TervEszkozPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TervEszkoz'
+          description: Terv eszközök listája
+    
     TopologiaPagedResponse:
       type: object
       required:
@@ -2545,7 +3469,21 @@ components:
           items:
             $ref: '#/components/schemas/Topologia'
           description: Topológiák listája
-
+    
+    TopologiaElemTervEszkozListaPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopologiaElemTervEszkozItem'
+          description: Topológia elemek a hozzájuk tartozó terv eszközökkel
+    
     AtvevoPagedResponse:
       type: object
       required:
@@ -2559,7 +3497,7 @@ components:
           items:
             $ref: '#/components/schemas/Atvevo'
           description: Átvevők listája
-
+    
     FelhasznaloBeallitasPagedResponse:
       type: object
       required:
@@ -2573,7 +3511,7 @@ components:
           items:
             $ref: '#/components/schemas/FelhasznaloBeallitas'
           description: Felhasználói beállítások listája
-
+    
     KalkulacioElemPagedResponse:
       type: object
       required:
@@ -2587,7 +3525,21 @@ components:
           items:
             $ref: '#/components/schemas/KalkulacioElem'
           description: Kalkulációs elemek listája
-
+    
+    KodtablaPagedResponse:
+      type: object
+      required:
+        - pageInfo
+        - items
+      properties:
+        pageInfo:
+          $ref: '#/components/schemas/PageInfo'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Kodtabla'
+          description: Kódtábla elemek listája
+    
     PageInfo:
       type: object
       required:
@@ -2640,14 +3592,7 @@ components:
           type: array
           description: Információs üzenetek a terv eszközök létrehozásáról
           items:
-            type: object
-            properties:
-              message:
-                type: string
-                description: Információs üzenet
-              code:
-                type: string
-                description: Üzenet kód (opcionális)
+            $ref: '#/components/schemas/InfoMessage'
   responses: {}
   parameters: {}
   securitySchemes: {}

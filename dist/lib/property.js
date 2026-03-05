@@ -26,9 +26,6 @@ class Property {
      */
     resolveType() {
         this.type = (0, gen_utils_1.tsType)(this.schema, this.options, this.openApi, this.model);
-        if (!this.required && this.options.noOptionalMarker && !this.type.includes('null')) {
-            this.type = `${this.type} | null`;
-        }
     }
 }
 exports.Property = Property;

@@ -1,6 +1,6 @@
 {
   "name": "ng-openapi-gen",
-  "version": "1.0.5-alpha.4",
+  "version": "1.0.5-alpha.5",
   "license": "MIT",
   "author": "Cyclos development team",
   "description": "An OpenAPI 3.0 and 3.1 codegen for Angular 16+",
@@ -24,7 +24,8 @@
     "test:ui": "vitest --ui",
     "lint": "eslint 'lib/**' 'test/*.ts'",
     "compile": "tsc --project tsconfig.build.json && ncp \"LICENSE\" dist && ncp \"README.md\" \"dist/README.md\" && ncp \"templates\" \"dist/templates\" && ncp \"ng-openapi-gen-schema.json\" \"dist/ng-openapi-gen-schema.json\" && node scripts/prepare-dist-package.js && rimraf \"dist/test\"",
-    "build": "npm run lint && npm run compile && npm test"
+    "build": "npm run lint && npm run compile && npm test",
+    "gen:ek": "node dist/lib/index.js --input test/ek-backend.yaml --output out/ek-backend --promises=false --services=true --experimental=true --noOptionalMarker=true"
   },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "^14.2.1",
