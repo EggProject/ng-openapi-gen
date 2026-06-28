@@ -1,0 +1,107 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Blah",
+    "version": "1"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Foo.Bar.Tazk": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Foo.Bar.TazkBase"
+          }
+        ],
+        "properties": {
+          "taskNumber": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Foo.Bar.TazkBase": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Foo.Bar.Dooz": {
+        "type": "object",
+        "properties": {
+          "doozObject": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Foo.Bar.Tazk"
+              }
+            ],
+            "properties": {
+              "doozNumber": {
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },      
+      "Foo.Bar.DiscBase": {
+        "type": "object",
+        "required": [
+          "$type"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "$type": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "discriminator": {
+          "propertyName": "$type",
+          "mapping": {
+            "disc-1": "#/components/schemas/Foo.Bar.DiscOne",
+            "disc-2": "#/components/schemas/Foo.Bar.DiscTwo"
+          }
+        }
+      },
+      "Foo.Bar.DiscOne": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Foo.Bar.DiscBase"
+          }
+        ],
+        "properties": {
+          "discNumber": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Foo.Bar.DiscTwo": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Foo.Bar.DiscBase"
+          }
+        ],
+        "properties": {
+          "discText": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
