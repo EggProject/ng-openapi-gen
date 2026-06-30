@@ -21,6 +21,7 @@ import { HandlebarsManager } from './handlebars-manager';
 import { Logger } from './logger';
 import { Model } from './model';
 import { Operation } from './operation';
+import { OperationVariant } from './operation-variant';
 import { Options } from './options';
 import { Service } from './service';
 import { Templates } from './templates';
@@ -107,9 +108,9 @@ export class NgOpenApiGen {
       }
 
       // Generate each function
-      const functions = services.reduce((acc, service) => [
+      const functions = services.reduce<OperationVariant[]>((acc, service) => [
         ...acc,
-        ...service.operations.reduce((opAcc, operation) => [
+        ...service.operations.reduce<OperationVariant[]>((opAcc, operation) => [
           ...opAcc,
           ...operation.variants
         ], [])
