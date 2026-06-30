@@ -53,7 +53,7 @@ Hungarian.
 
 - **Project name**: `ng-openapi-gen` (EggProject fork)
 - **Slug**: `ng-openapi-gen`
-- **Purpose**: An OpenAPI 3.0 / 3.1 code generator for Angular 16+. Forked
+- **Purpose**: An OpenAPI 3.0 / 3.1 code generator for Angular 22+. Forked
   from `cyclosproject/ng-openapi-gen` for internal use / customization.
 - **Repository URL (local fork)**: `git@github.com:EggProject/ng-openapi-gen.git`
 - **Upstream repository URL**: `https://github.com/cyclosproject/ng-openapi-gen`
@@ -62,12 +62,15 @@ Hungarian.
 
 # 2 · Stack
 
-- **Runtime**: Node 24 (`@types/node ^24.9.0` pinned in devDeps)
-- **TypeScript**: `~5.9.3`
+- **Runtime**: Node 24 (`@types/node ^24.9.0` pinned in devDeps; Angular 22
+  minimum `^24.15.0` tracked in research; not bumped per user direction — Node
+  version stays on the currently-installed 24.9+ devDep range)
+- **TypeScript**: `~6.0.3`
 - **Package manager**: npm (`package-lock.json` present; no `pnpm-lock.yaml`
   / `bun.lockb` / `yarn.lock`)
-- **Framework(s)**: Angular 16+ peer (generator target), Angular CLI not
-  required at build time
+- **Framework(s)**: Angular 22+ peer (generator target), Angular CLI not
+  required at build time. Reference the targeted CLI version with
+  `npx -p @angular/cli@^22.0.0 -- ng version`.
 - **Database**: none (pure code generator; consumes OpenAPI specs at
   build-time)
 - **Deployment target**: npm registry (the package is published via the
@@ -145,8 +148,8 @@ ng-openapi-gen/
 
 # 6 · Testing
 
-- **Unit runner**: Vitest 3 (`vitest.config.ts`, `npm test`)
-- **Integration runner**: Vitest 3 (same runner, no separate suite)
+- **Unit runner**: Vitest 4 (`vitest.config.ts`, `npm test`)
+- **Integration runner**: Vitest 4 (same runner, no separate suite)
 - **E2E runner**: not applicable — the package is a CLI code generator;
   end-to-end coverage lives under `test/` as snapshot tests of generated
   output. There is no running app to bring up.
@@ -216,5 +219,6 @@ the code itself is correct.
 
 ---
 
-> **Last verified**: 2026-06-29 against commit `3772abd first` on the
+> **Last verified**: 2026-06-30 against commit `a12a41b` (Angular 22 stack-upgrade,
+> `wt/t_9a850ac4` branch) on the
 > `master` branch of the `EggProject/ng-openapi-gen` fork.

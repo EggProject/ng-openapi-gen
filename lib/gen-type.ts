@@ -22,14 +22,14 @@ export abstract class GenType {
   fileName: string;
 
   /** TypeScript comments for this type */
-  tsComments: string;
+  tsComments!: string;
 
-  pathToRoot: string;
+  pathToRoot!: string;
 
-  imports: Import[];
+  imports!: Import[];
   private _imports: Imports;
 
-  additionalDependencies: string[];
+  additionalDependencies!: string[];
   private _additionalDependencies = new Set<string>();
 
   constructor(
