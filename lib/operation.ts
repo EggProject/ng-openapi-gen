@@ -1,4 +1,4 @@
-import { last, upperFirst } from 'lodash';
+import { last, upperFirst } from './case';
 import { Content } from './content';
 import { resolveRef, typeName } from './gen-utils';
 import { Logger } from './logger';

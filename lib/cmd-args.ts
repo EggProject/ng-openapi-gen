@@ -3,7 +3,7 @@ import pkg from '../package.json';
 import schema from '../ng-openapi-gen-schema.json';
 import { Options } from './options.js';
 import fs from 'fs';
-import { kebabCase } from 'lodash';
+import { kebabCase } from './case';
 
 const MNEMONICS: { [key: string]: string } = { 'input': 'i', 'output': 'o' };
 const DEFAULT = 'ng-openapi-gen.json';

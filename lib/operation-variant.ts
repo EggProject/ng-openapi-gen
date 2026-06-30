@@ -1,4 +1,4 @@
-import { upperFirst } from 'lodash';
+import { upperFirst } from './case';
 import { Content } from './content';
 import { GenType } from './gen-type';
 import { ensureNotReserved, fileName, resolveRef, tsComments } from './gen-utils';

@@ -1,4 +1,4 @@
-import { upperCase } from 'lodash';
+import { upperCase } from './case';
 import { EnumValue } from './enum-value';
 import { GenType } from './gen-type';
 import { fileName, tsComments, tsType, unqualifiedName, resolveRef, qualifiedName } from './gen-utils';

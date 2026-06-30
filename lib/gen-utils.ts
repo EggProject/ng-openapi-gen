@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import jsesc from 'jsesc';
-import { camelCase, deburr, kebabCase, upperCase, upperFirst } from 'lodash';
+import { camelCase, deburr, kebabCase, upperCase, upperFirst } from './case';
 import path from 'path';
 import { Logger } from './logger';
 import { Model } from './model';

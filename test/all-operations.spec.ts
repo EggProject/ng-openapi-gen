@@ -1,4 +1,4 @@
-import { upperFirst } from 'lodash';
+import { upperFirst } from '../lib/case';
 import { ClassDeclaration, FunctionDeclaration, InterfaceDeclaration, TypescriptParser } from 'typescript-parser';
 import { Content } from '../lib/content';
 import { NgOpenApiGen } from '../lib/ng-openapi-gen';

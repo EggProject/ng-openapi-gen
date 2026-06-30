@@ -1,6 +1,6 @@
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import eol from 'eol';
-import { upperFirst } from 'lodash';
+import { upperFirst } from './case';
 
 // Import centralized OpenAPI types and utilities
 import {
