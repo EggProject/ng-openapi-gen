@@ -1,80 +1,77 @@
-# RELEASE — Angular 22 stack-frissítés · PR-delivery
+# RELEASE — Dependency refresh · PR-delivery
 
-> **Release type:** package release PR (npm package `ng-openapi-gen` v1.0.5 → v1.0.6)
-> **Branch:** `wt/t_9a850ac4` @ `f29ce5fc04a8c2a18b164b0e8c4e52ad59315867`
-> **Base:** `main` @ `ce0f1907814c010010f9ba4f782780e59738aa96` (`add pipeline (#2)`)
+> **Release type:** package release PR (npm package `ng-openapi-gen`, version bump: **none** — patch/minor dep refresh, no API/surface change)
+> **Branch:** `wt/t_865e998e` @ `570541d6995231e51a717499c29bdf0ea100f2c8`
+> **Base:** `main` @ `b61e1473dbb4c976f41dd28f63d02a799a55be79` (`feat(deps): angular 22 + typescript 6 stack update with strict mode re-enabled (#3)`)
 > **Pipeline config:** `auto_create_pr=true`, `auto_merge_pr=true`
 > **CI:** `.github/workflows/build.yml` (Node 22.x · `npm install` · `npm run build`)
 > **Date:** 2026-07-01
 
 ---
 
-## Összefoglaló
+## Összoglaló
 
-A `ng-openapi-gen` package stack-frissítése Angular 22 + TypeScript 6 vonalra, a
-felhasználó kérésére a hivatalos Angular CLI update módszertan követve (ehhez a
-profil a research dossier 4. szakaszában részletezett 5. fázisú `ng update`
-sémát alkalmazta, mivel a projektben nincs `angular.json`, így a CLI
-schematics nem futtatható — a manuális fázisos végrehajtás a CLI ajánlásával
-ekvivalens eredményt produkál a kódgenerátor csomag esetén). A 11 commit
-lefedi a research → stack bump → peer-dep → tsconfig → vitest config → CVE
-cleanup → strict-mode aktiválás → strict-hibák javítása lépcsőket. A
-folyamat során a felhasználó két korrekciót hajtott végre: (1) a 9-es
-tervben foglalt Node bump és `@types/node` bump **kihagyva** (maradt
-`^24.9.0`); (2) a TypeScript 6 miatt szükséges `"strict": false` workaround
-**visszavonva** — `strict: true` aktiválva, és a keletkezett TS2564/TS2565
-strict-hibák definit assignment assertion-nel javítva.
+A `docs/research/research-dossier.md` (t_d96bbf39) által azonosított 6 alacsony
+kockázatú frissítési lehetőségből 5 elfogadott, 1 elhalasztott:
+
+| # | Csomag | Régi → Új | Típus |
+|---|---|---|---|
+| 1 | `replace-in-file` (devDep) | `^8.3.0` → **törölve** | holt függőség eltávolítása + 14 tranzitív dropout |
+| 2 | `lodash` (dep) | `^4.17.24` → `^4.18.1` | pinning-konzisztencia (a lock már most is 4.18.1-et tartalmaz) |
+| 3 | `@types/lodash` (devDep) | `^4.17.20` → `^4.17.24` | patch×4 |
+| 4 | `fs-extra` (dep) | `^11.3.2` → `^11.3.6` | patch×3 |
+| 5 | `@types/node` (devDep) | `^24.9.0` → `^24.10.0` (feloldva: 24.13.2) | minor×1 |
+
+A 6. ajánlott frissítés (`replace-in-file` 8.3.0→8.4.0 minor) az 1. pont
+eltávolításával együtt elesett — nincs értelme egy nem-létező csomagot
+„frissíteni".
 
 A release-gate minden feltétele teljesül:
 
 | Feltétel | Eredmény |
 |---|---|
-| `npm run build` exit 0 (lint + compile + 141/141 test) | zöld · 2026-07-01 00:18 UTC |
+| `npm run build` exit 0 (lint + compile + 141/141 test) | zöld · 2026-07-01 01:01 UTC |
 | `npm audit --production` | 0 vulnerability |
-| `tsconfig.json` `strict: true` | aktív, hibamentes |
-| `lib/*.ts` strict-kompatibilis | a `f29ce5f` commit definite assignment assertion-ökkel |
-| CI workflow `.github/workflows/build.yml` | lokál szimulálva (Node 22.x + `npm run build` zöld) |
-| Lockfile integritás | 278/278 `integrity` SHA-512, 0 foreign-registry entry |
-| `peerDependencies` (`@angular/core >=22.0.0`, `rxjs ^6.6.7 \|\| ^7.4.0`) | pontos |
-| User-tiltások tiszteletben tartva | nincs `engines.node` pin, nincs `@types/node` bump, nincs ES2022 target forcing |
+| `@types/node ^24.10.0` (feloldva 24.13.2) | TS-strict kompatibilis, nincs regresszió |
+| Lockfile integritás | 229 csomag, 0 foreign-registry entry |
+| `peerDependencies` változatlan | `@angular/core >=22.0.0`, `rxjs ^6.6.7 \|\| ^7.4.0` |
+| Reviewer-verdikt (t_92dac5cc) | `approved` — 0 blocker, 0 required fix |
+| Security-verdikt (t_ac849bd9) | `clear` — 0 CVE, 0 downgrade, 0 deferred-drift |
+| QA-verdikt (t_6473b602) | `pass` — 8/8 lépés, 141/141 teszt, ~1.85s |
 
 ---
 
-## Commit-lista (11 commit, `ce0f190..HEAD`)
+## Commit-lista (3 commit, `b61e147..570541d`)
 
 | # | SHA | Üzenet |
 |---|---|---|
-| 1 | `4ae7c68` | research(stack-update): angular 22 stack-upgrade dossier |
-| 2 | `ff2a21c` | chore(ts): bump typescript to ~6.0.x |
-| 3 | `765f866` | chore(lint): bump @typescript-eslint to ^8.50.0 |
-| 4 | `c73745e` | chore(test): bump vitest to ^4.x |
-| 5 | `cd33ca0` | chore(vitest-config): review vitest.config.ts for v4 |
-| 6 | `5f14c1b` | chore(deps): update @angular/core peer range to >=22, rxjs to ^6.6.7 \|\| ^7.4.0 |
-| 7 | `a12a41b` | chore(tsconfig): review ES2022 target and bundler module resolution |
-| 8 | `191e71d` | chore(deps): json-schema-ref-parser 14 → 15 |
-| 9 | `d564488` | docs: angular 22+, typescript 6 in stack references |
-| 10 | `9ef5956` | chore(deps): patch-bump handlebars 4.7.9 + lodash 4.17.24 (CVE cleanup) |
-| 11 | `a222b84` | chore(tsconfig): enable strict mode (revert strict: false workaround) |
-| 12 | `f29ce5f` | fix(types): resolve TS strict-mode errors across lib/*.ts |
+| 1 | `e05375d` | `chore(deps): remove unused replace-in-file devDependency` |
+| 2 | `9e35a3a` | `fix(deps): update lodash and @types/lodash declarations to match lockfile` |
+| 3 | `570541d` | `chore(deps): bump fs-extra and @types/node within minor` |
+| 4 | (PR-side) | `docs(release): RELEASE.md and DEPLOY-LOG.md for dependency refresh` |
 
-> A research dossier (`4ae7c68`) a stack-frissítés kontextusát dokumentálja,
-> és bár a stack-bump commitokkal együtt kerül a `main`-re, a terv a 9-es
-> stack-commit + 1 strict-akt commit + 1 strict-fix commit struktúrát írta
-> elő — a research commit technikai értelemben a release PR része.
+A release-docs commit (4.) kizárólag markdown fájlokat ad hozzá, a reviewer
+verdiktek scope-ját nem érinti — a qa-tester (t_6473b602) és a security-auditor
+(t_ac849bd9) verdiktje a 3. commiton (`570541d`) született, és a build-eredmény
+továbbra is zöld.
 
 ---
 
 ## Változás-statisztika
 
 ```
- 12 files changed, 2002 insertions(+), 2226 deletions(-)
+ 2 files changed (package.json + package-lock.json), 34 insertions(+), 493 deletions(-)
 ```
 
-A `package-lock.json` 3552 soros diffje kizárólag a verió-bumpok (TS 6.0,
-ESLint 8.62, Vitest 4.1, json-schema-ref-parser 15.4, handlebars 4.7.9,
-lodash 4.18.1) és a transitive dependency-konszolidáció tükrözi. A `lib/*.ts`
-módosítás 4 fájlban 32 sort érint (definite assignment assertion-ök + a
-reduce explicit `<OperationVariant[]>` típusannotáció).
+A `package-lock.json` diff 518 soros, amelynek túlnyomó része a `replace-in-file`
+eltávolításakor kieső 14 tranzitív csomag (`chalk@4`, `string-width`,
+`strip-ansi@6`, `ansi-regex@4`, `ansi-styles@4`, `color-convert`,
+`color-name`, `is-fullwidth-code-point`, `lodash@4` klón, `p-limit@2`,
+`p-try@2`, `yocto-queue`); a fennmaradó rész a 4 verzió-bump
+tranzitív feloldása.
+
+A `package.json` diff 5 tényleges sort érint (1 törlés + 4 csere), 0 új
+import/függőség bevezetése.
 
 ---
 
@@ -84,23 +81,40 @@ A release egy **npm-package source PR**, nem production deploy. Nincs futó
 szolgáltatás, nincs SLO, nincs on-call rotáció. A blast radius:
 
 - A `ng-openapi-gen` package fogyasztói downstream Angular alkalmazások,
-  akik a kódgenerátort build-time eszközként használják. A `peerDependencies`
-  range bővítése (`@angular/core >=22.0.0`, `rxjs ^6.6.7 || ^7.4.0`)
-  visszafelé kompatibilis: a package működik Angular 16+ klienssel is
-  (ahogy az AGENTS.md §1 kimondja), a `>=22.0.0` floor csak azt deklarálja,
-  hogy a tesztelt minimum 22.
-- A TypeScript 6 szigorú típusellenőrzése a kódgenerátor **kimenetét** nem
-  érinti (a kódgenerátor a felhasználó Angular projektjében fut, nem itt) —
-  csak a **saját lib/*.ts** típusellenőrzése szigorodott, és az a
-  `f29ce5f` commitban lekezelt.
-- A Vitest 4 mock-név formátum-változás nem érintett — a `test/`-ben nincs
-  Vitest `.snap` fájl, a snapshot-ok generált TS kód (out/, gitignored).
+  akik a kódgenerátort build-time eszközként használják. A függőség-változások
+  kizárólag patch/minor szintűek, és egyik sem érint publikus API-t vagy
+  kódgenerátor-kimenetet.
+- A `replace-in-file` eltávolítása 0 fogyasztói hatással jár — a csomag holt
+  függőség volt (sehol nem használta a kódgenerátor kódja).
+- A `lodash` 4.18.1-re frissítés pinning-konzisztencia: a `package-lock.json`
+  már a 4.18.1-et tartalmazta, csak a `package.json` deklaráció nem követte.
+  A `npm install` nem változtatja meg a feloldott verziót, csak a caret
+  tartomány alsó határát emeli 4.17.24-ről 4.18.1-re.
+- A `fs-extra` 11.3.6 és a `@types/node` 24.13.2 csak a *types* csomagokra
+  vonatkoznak, a futtató Node a saját telepítés.
 
 Rollback: `gh pr close <N>` + `git revert -m 1 <merge-sha>` a `main`-en, ha
-a downstream felhasználó regressziót jelez. NPM-re még nem került ki a
-package (1.0.5), a release PR merge utána lesz a `npm publish` workflow
-triggerje — de a jelenlegi repo-ban `.github/workflows/publish.yml` nem
-szerepel, tehát a publish manuális lépés.
+a downstream felhasználó regressziót jelez. NPM-re nem került ki újabb
+verzió (a `package.json` verziója nem változott: maradt `1.0.5`).
+
+---
+
+## Elhalasztott karbantartási figyelmeztetések (out of scope)
+
+A research dossier §4 azonosított 3 olyan csomagot, amelyek karbantartási
+problémát jeleznek, de a jelen PR scope-ját meghaladják. Ezek a jövőbeli
+security-sprint-ben kerülnek felülvizsgálatra:
+
+1. **`typescript-parser@2.6.1`** — utolsó release 2018. augusztus 31.,
+   `typescript: ^3.0.3` függőséggel. Valószínűleg inkompatibilis a TS 6-tal.
+2. **`ncp@2.0.0`** — utolsó release 2014-ből, karbantartatlan. A `compile`
+   script 4 db `ncp`-hívása refaktorolható natív `fs.cp`-re (Node 22+) —
+   script-refaktor, nem verzió-emelés.
+3. **`@apidevtools/json-schema-ref-parser`** — ESM/CJS bridge probléma,
+   downstream refaktor-ciklus szükséges.
+
+A security-auditor (t_ac849bd9) verdictje ezeket a `deferred register`-en
+tartja, a jelen PR scope-ját nem érintik.
 
 ---
 
@@ -111,14 +125,11 @@ szerepel, tehát a publish manuális lépés.
 git checkout main && git pull origin main
 git revert -m 1 <merge-sha>
 git push origin main
-# Ha npm-re már kiadatott 1.0.6:
-npm dist-tag add ng-openapi-gen@1.0.5 latest
 ```
 
-A `npm dist-tag` rollback azért fontos, mert ha a PR merge triggerel egy
-publish workflow-t, akkor a `latest` taget vissza kell állítani az 1.0.5-re.
-Ebben a repo-ban ez jelenleg nem automatizált, de a rollback playbook
-része.
+A `package.json` verziója nem változott (maradt `1.0.5`), így NPM-re nem
+került ki új kiadás — a rollback kimerül a PR bezárásában + a `main`-en
+egy revert commitban.
 
 ---
 
@@ -129,19 +140,13 @@ metrikák nem relevánsak. A post-merge megfigyelési checklist:
 
 1. **GitHub Actions tab** — a `build` workflow zöld-e a `main` push-ra
    (a release PR merge egy push a `main` branchre, ami triggerel).
-2. **npm registry** — ha a publish-t triggerelő workflow / script lefut,
-   ellenőrizni kell a `https://www.npmjs.com/package/ng-openapi-gen`
-   oldalon a `1.0.6` verzió megjelenését és a `latest` dist-tag
-   frissülését.
-3. **Downstream user issue-k** — a GitHub Issues-ban a `1.0.6` release
-   megjelenését követő 24h-ban figyelni kell a `peerDependencies` /
-   `strict: true` regression-jelentéseket. A `peerDependencies` range
-   bővítés nem töri el a 16+ klienseket, de ha bármelyik edge-case
-   kimaradt, itt jelenik meg először.
-4. **Vitest 4 snapshot-ok** — a `test/` könyvtár `*.snap.ts` fixture-öket
-   generál, nem klasszikus Vitest snapshot-okat. Ha bármely downstream
-   user reportol snapshot-mismatch-et, az a Vitest 4 mock-név formátum
-   regresszió jele — de a jelenlegi suite-ban ez nem jött elő.
+2. **npm registry** — nem triggerelődik publish (nincs `.github/workflows/publish.yml`,
+   a `package.json` verziója nem változott), így a `https://www.npmjs.com/package/ng-openapi-gen`
+   nem frissül.
+3. **Downstream user issue-k** — a GitHub Issues-ban a merge-t követő 24h-ban
+   figyelni kell a `fs-extra` 11.3.6 vagy `@types/node` 24.13.2 kapcsán
+   beérkező regresszió-jelentéseket. A security-auditor nem jelzett ismert
+   inkompatibilitást, és a lokális build zöld.
 
 A post-merge watch window: **24h**. Ha 24h-n belül nincs user-reported
 regresszió, a release sikeresnek tekintendő.
@@ -151,43 +156,39 @@ regresszió, a release sikeresnek tekintendő.
 ## Fogyasztói migrációs lépések (release notes, publikus)
 
 ```markdown
-## ng-openapi-gen 1.0.6 · Angular 22 / TypeScript 6 stack-frissítés
+## ng-openapi-gen 1.0.5 · Függőség-frissítés (patch/minor)
 
-### Kompatibilitás
-- A kódgenerátor mostantól **Angular 22+** klienssel van tesztelve, és
-  deklarálja a `@angular/core >=22.0.0` peer-dependency-t.
-- A `rxjs` peer-tartomány `^6.6.7 || ^7.4.0` (a korábbi `>=7.0.0` helyett
-  a kódgenerátor futásidejű igényeinek megfelelően szűkítve).
-- TypeScript 6-tal fut, a generator belső kódja `strict: true` üzemmódban
-  van fordítva.
+### Nincs törő változás
+Ez egy kizárólag belső függőség-frissítés; a kódgenerátor kimenete és a
+publikus API nem változott. A `package.json` verziója nem emelkedett.
 
-### Belső fejlesztések (fogyasztói szempontból nem érint)
-- A generator belső típusellenőrzése szigorodott (definite assignment
-  assertion-ök a konstruktor-flow-hoz), a kimenet nem változik.
-- A Vitest 4.1-re és a Vitest UI 4.1-re frissült a fejlesztői tooling.
+### Belső karbantartás
+- A `lodash` deklaráció mostantól `^4.18.1`-re szinkronban a lockfile
+  feloldásával (korábban `^4.17.24` volt deklarálva, miközben a lock 4.18.1-et
+  tartalmazott).
+- A `fs-extra` 11.3.2 → 11.3.6 (patch×3, nincs API-változás).
+- A `@types/lodash` 4.17.20 → 4.17.24 (patch×4).
+- A `@types/node` 24.9.0 → 24.10.0 (feloldva 24.13.2; nincs TS-strict regresszió).
+- A holt `replace-in-file` devDependency eltávolítva — sehol nem használta
+  a kódgenerátor; 14 tranzitív csomag is kiesett.
 
-### CVE cleanup
-- `handlebars` 4.7.8 → 4.7.9 (8 critical/high CVE zárva).
-- `lodash` 4.17.21 → 4.18.1 (3 high CVE zárva).
-- `@apidevtools/json-schema-ref-parser` 14 → 15 (transitive `js-yaml` CVE
-  zárva).
-
-### Nem törő változás
-A peer-dependency range bővítésének célja a 22-es Angular kliensek
-natív támogatása. A 16–21-es Angular kliensekkel is működik a package
-(továbbra is), de a formális floor mostantól 22.
+### Ismert, de elhalasztott karbantartási feladatok
+- `typescript-parser` 2018-as utolsó release, TS 6 inkompatibilitás valószínű
+- `ncp` 2014-es utolsó release, natív `fs.cp` migráció tervben
+- `@apidevtools/json-schema-ref-parser` ESM/CJS bridge, downstream refaktor
 ```
 
 ---
 
 ## Hitelesített HEAD + aláírás
 
-- **Verified head SHA:** `f29ce5fc04a8c2a18b164b0e8c4e52ad59315867`
-- **Verified branch:** `wt/t_9a850ac4`
-- **Verified base SHA:** `ce0f1907814c010010f9ba4f782780e59738aa96` (`main`)
-- **Build artifact:** `dist/` (csomagolva a `npm run compile` által, benne
-  `lib/`, `templates/`, `LICENSE`, `README.md`, `ng-openapi-gen-schema.json`)
-- **Local build verified:** 2026-07-01 00:18 UTC, exit 0, 31/31 spec file,
-  141/141 teszt
+- **Verified head SHA:** `570541d6995231e51a717499c29bdf0ea100f2c8`
+- **Verified branch:** `wt/t_865e998e`
+- **Verified base SHA:** `b61e1473dbb4c976f41dd28f63d02a799a55be79` (`main`)
+- **Lockfile resolved:** `lodash 4.18.1`, `fs-extra 11.3.6`, `@types/node 24.13.2`,
+  `@types/lodash 4.17.24` (229 csomag, 0 foreign-registry entry)
+- **Local build verified:** 2026-07-01 01:01 UTC, exit 0, 31/31 spec file,
+  141/141 teszt, ~1.85s
 - **npm audit --production:** 0 vulnerability
-- **CI workflow:** `.github/workflows/build.yml` (Node 22.x · `npm run build`)
+- **CI workflow:** `.github/workflows/build.yml` (Node 22.x · `npm install` ·
+  `npm run build`)
