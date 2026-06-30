@@ -1,0 +1,579 @@
+# ===========================================================================
+# pipeline.yaml — the canonical pipeline contract for the Hermes 15-profile
+# orchestrator. Defines: which profile does what, how stages compose into
+# paths, which invariants the orchestrator MUST enforce, and how to fall back
+# to dynamic synthesis when no path fits.
+#
+# Loaded by:
+#   ~/.hermes/profiles/orchestrator/skills/hermes-pipeline-driver/engine/config.py
+# Default location:
+#   ~/projects/<slug>/.hermes/pipeline.yaml    (per-project override)
+#   $HERMES_HOME/pipeline.yaml                 (profile-local fallback)
+#
+# Edit this file, then run the Hermes-venv validation command from the skill root.
+# Tests in tests/ guarantee the engine respects the schema.
+# ===========================================================================
+
+schema_version: 1
+
+# Default language for all human-facing pipeline output. Internal agent prompts
+# remain English. A card can override this per flow with:
+#   communication_language: English
+communication_language: Hungarian
+
+# GitHub pull-request delivery policy for Git-backed code-changing flows. Both
+# controls can be overridden independently at the beginning of an intake card:
+#   auto_create_pr: false
+#   auto_merge_pr: false
+# When PR creation is disabled, an existing matching PR may still be merged if
+# auto_merge_pr remains true; no new PR is created implicitly.
+auto_create_pr: true
+auto_merge_pr: true
+
+# ---------------------------------------------------------------------------
+# PROFILE PRIMITIVES — what each of the 14 worker profiles contributes.
+# The orchestrator profile is not a primitive (it drives the pipeline).
+# Every persistent project primitive declares a worktree. For Git-backed
+# declared paths, authoritative decompose rebases all of them into one shared
+# intake-scoped worktree before any Kanban card is emitted. Scratch is reserved
+# only for the explicitly throwaway spike path.
+# ---------------------------------------------------------------------------
+profile_primitives:
+
+  researcher:
+    role: "Reads source code and external docs, verifies claims, writes structured research dossiers."
+    inputs: [intake-body]
+    outputs: [docs/research/research-dossier.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    keywords_hu: [kutass, kutatás, vizsgáld, tanulmányoz, hasonlítsd össze, dokumentumok]
+    keywords_en: [research, investigate, study, compare, evaluate, survey, find out]
+    can_follow: [intake]
+
+  architect:
+    role: "Designs system architecture, writes ADRs, threat models, sequence diagrams."
+    inputs: [docs/research/research-dossier.md, intake-body]
+    outputs: [docs/adr/ADR-<n>.md, system-design.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    keywords_hu: [tervezz, architektúra, ADR, modulhatár, döntés]
+    keywords_en: [design, architecture, ADR, system design, trade-off]
+    can_follow: [researcher, intake]
+
+  ux-designer:
+    role: "Designs user flows, design tokens, prototypes, accessibility audits."
+    inputs: [intake-body]
+    outputs: [docs/ux/flow.md, docs/ux/tokens.json, prototype.html]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    keywords_hu: [UX, design, felhasználói, prototípus, mockup, design rendszer, akadálymentes]
+    keywords_en: [UX, user flow, prototype, mockup, wireframe, design system, accessibility, a11y]
+    can_follow: [researcher, intake]
+
+  planner:
+    role: "Decomposes ratified architecture into executable step graphs with deps."
+    inputs: [system-design.md, intake-body]
+    outputs: [docs/plans/PLAN.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    keywords_hu: [tervezd meg, plan, terv, lebontás, step graph]
+    keywords_en: [plan, decompose, step graph, milestones]
+    can_follow: [architect]
+
+  plan-reviewer:
+    role: "Adversarial critic of planner output. Reflexion loop max 3."
+    inputs: [docs/plans/PLAN.md]
+    outputs: [docs/plans/PLAN-REVIEW-rN.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    reflexion_max: 3
+    keywords_hu: [kritizáld, ellenőrizd a tervet, plan review]
+    keywords_en: [critique, review plan, adversarial review]
+    can_follow: [planner]
+
+  backend-coder:
+    role: "Implements server-side code per AGENTS.md. Strict lint. TDD."
+    inputs: [docs/plans/PLAN.md, system-design.md, AGENTS.md]
+    outputs: [diff, tests]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "task/<task-id>"
+    mandatory_followers: [code-reviewer, security-auditor, qa-e2e-tester]
+    keywords_hu: [backend, API, szerver, endpoint, adatbázis kezelés, middleware]
+    keywords_en: [backend, server, API, endpoint, route, middleware, controller]
+    can_follow: [planner, architect]
+
+  frontend-coder:
+    role: "Implements client-side code per design tokens. A11y, perf budget. TDD."
+    inputs: [docs/plans/PLAN.md, docs/ux/, AGENTS.md]
+    outputs: [diff, tests]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "task/<task-id>"
+    mandatory_followers: [code-reviewer, security-auditor, qa-e2e-tester]
+    keywords_hu: [frontend, UI, komponens, oldal, vászon]
+    keywords_en: [frontend, UI, component, page, layout, view]
+    can_follow: [planner, ux-designer, architect]
+
+  data-engineer:
+    role: "Owns schemas, migrations, ETL, data quality."
+    inputs: [docs/plans/PLAN.md, system-design.md, AGENTS.md]
+    outputs: [migrations/, etl/, schema.sql]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "task/<task-id>"
+    mandatory_followers: [code-reviewer, security-auditor, qa-e2e-tester]
+    keywords_hu: [migráció, séma, ETL, adatfolyamat, adatbázis átalakítás]
+    keywords_en: [migration, schema, ETL, data pipeline, dbt, sql changes]
+    can_follow: [planner, architect]
+
+  prompt-engineer:
+    role: "Designs and evaluates LLM prompts, agent loops, tool schemas."
+    inputs: [intake-body, docs/plans/PLAN.md, agent-spec.md]
+    outputs: [prompts/, eval-results.json]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    mandatory_followers: [code-reviewer]
+    keywords_hu: [prompt, LLM értékelés, eval, agent loop, tool schema]
+    keywords_en: [prompt, LLM eval, agent loop, tool schema, instructor, dspy]
+    can_follow: [researcher, architect, planner]
+
+  code-reviewer:
+    role: "Judge. Binary approve/request-changes verdict on code diffs vs AGENTS.md."
+    inputs: [diff, AGENTS.md]
+    outputs: [REVIEW.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    can_follow: [backend-coder, frontend-coder, data-engineer, prompt-engineer]
+
+  security-auditor:
+    role: "Judge. Binary clear/vulnerable verdict on security posture."
+    inputs: [diff, threat-model.md]
+    outputs: [SECURITY-REVIEW.md]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    can_follow: [code-reviewer]
+
+  qa-e2e-tester:
+    role: "Judge. Runs real app, AI-driven Playwright/Cypress integration tests."
+    inputs: [diff, running-app]
+    outputs: [E2E-REPORT.md, playwright-results.json]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    branch: "test/<task-id>"
+    can_follow: [security-auditor]
+
+  devops-releaser:
+    role: "Owns CI/CD, IaC, deploys, observability, on-call runbooks."
+    inputs: [diff, deploy-spec.md]
+    outputs: [RELEASE.md, deploy-log]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    can_follow: [qa-e2e-tester]
+
+  docs-scribe:
+    role: "Owns docs, runbooks, ADR index, changelog, release notes."
+    inputs: [diff, RELEASE.md, ADR-*]
+    outputs: [CHANGELOG.md, docs/]
+    workspace: "worktree:<project-root>/.worktrees/<task-id>"
+    keywords_hu: [dokumentáció, docs, changelog, release notes, runbook, README]
+    keywords_en: [documentation, docs, changelog, release notes, runbook, README, API docs]
+    can_follow: [devops-releaser, qa-e2e-tester]
+
+# ---------------------------------------------------------------------------
+# STAGE TEMPLATES — reusable composable building blocks. A path is a
+# sequence of stage_template references with role bindings.
+# ---------------------------------------------------------------------------
+stage_templates:
+
+  research_phase:
+    description: "Round A — Discovery phase. Single dossier."
+    steps:
+      - { profile: researcher, parent: "<intake-id>" }
+
+  architecture_phase:
+    description: "Round A — Architecture phase. ADR + system design."
+    steps:
+      - { profile: architect, parent: "research_phase.last" }
+
+  ux_phase:
+    description: "Round A optional — UX design phase after the shared research dossier."
+    steps:
+      - { profile: ux-designer, parent: "research_phase.last" }
+
+  plan_consensus:
+    description: "Round A — Plan + Reflexion loop (max 3 iterations)."
+    steps:
+      - { profile: planner, parent: "architecture_phase.last" }
+      - { profile: plan-reviewer, parent: "planner.last", reflexion: true }
+
+  plan_consensus_with_ux:
+    description: "Round A — Plan consumes both ratified architecture and UX output, then Reflexion review."
+    steps:
+      - { profile: planner, parent: ["architecture_phase.last", "ux_phase.last"] }
+      - { profile: plan-reviewer, parent: "planner.last", reflexion: true }
+
+  hitl_plan_gate:
+    description: "Round A → B HITL gate — user approves PLAN.md."
+    kanban_block:
+      reason: "review-required: approve plan (Round A complete, awaiting user)"
+
+  implement_backend:
+    description: "Round B — Backend implementation with full judge chain."
+    steps:
+      - { profile: backend-coder, parent: "hitl_plan_gate.last" }
+      - { profile: code-reviewer, parent: "backend-coder.last" }
+      - { profile: security-auditor, parent: "code-reviewer.last" }
+      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+
+  implement_frontend:
+    description: "Round B — Frontend implementation with full judge chain."
+    steps:
+      - { profile: frontend-coder, parent: "hitl_plan_gate.last" }
+      - { profile: code-reviewer, parent: "frontend-coder.last" }
+      - { profile: security-auditor, parent: "code-reviewer.last" }
+      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+
+  implement_data:
+    description: "Round B — Data engineering implementation with full judge chain."
+    steps:
+      - { profile: data-engineer, parent: "hitl_plan_gate.last" }
+      - { profile: code-reviewer, parent: "data-engineer.last" }
+      - { profile: security-auditor, parent: "code-reviewer.last" }
+      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+
+  implement_prompt:
+    description: "Round B — Prompt engineering with code-review (no security/qa for prompts unless agent tools change)."
+    steps:
+      - { profile: prompt-engineer, parent: "hitl_plan_gate.last" }
+      - { profile: code-reviewer, parent: "prompt-engineer.last" }
+
+  hitl_ship_gate:
+    description: "Round B → C HITL gate — user approves ship."
+    kanban_block:
+      reason: "review-required: approve ship (Round B complete, judges cleared)"
+
+  release_phase:
+    description: "Round C — Deploy + release notes."
+    steps:
+      - { profile: devops-releaser, parent: "hitl_ship_gate.last" }
+
+  docs_sync_phase:
+    description: "Round C — Docs sync after release."
+    steps:
+      - { profile: docs-scribe, parent: "release_phase.last" }
+
+  # Single-profile templates for narrow paths
+
+  research_only:
+    description: "Just the researcher dossier — terminal."
+    steps:
+      - { profile: researcher, parent: "<intake-id>" }
+
+  ux_only:
+    description: "Just UX design output — terminal at gate."
+    steps:
+      - { profile: ux-designer, parent: "<intake-id>" }
+
+  docs_only:
+    description: "Just docs-scribe — terminal at gate."
+    steps:
+      - { profile: docs-scribe, parent: "<intake-id>" }
+
+  security_audit_only:
+    description: "security-auditor scoped to a specific area."
+    steps:
+      - { profile: security-auditor, parent: "<intake-id>" }
+
+  e2e_only:
+    description: "qa-e2e-tester run new tests against running stack."
+    steps:
+      - { profile: qa-e2e-tester, parent: "<intake-id>" }
+
+  code_review_only:
+    description: "Standalone code review of an existing PR or commit range."
+    steps:
+      - { profile: code-reviewer, parent: "<intake-id>" }
+
+  prompt_eval_only:
+    description: "Prompt engineering iteration + eval, no production code change."
+    steps:
+      - { profile: prompt-engineer, parent: "<intake-id>" }
+      - { profile: code-reviewer, parent: "prompt-engineer.last" }
+
+  hotfix_phase:
+    description: "Skip Round A. Direct fix → judges → release."
+    steps:
+      - { profile: backend-coder, parent: "<intake-id>" }   # default coder; orchestrator may sub frontend-coder / data-engineer based on intake body
+      - { profile: code-reviewer, parent: "backend-coder.last" }
+      - { profile: security-auditor, parent: "code-reviewer.last" }
+      - { profile: qa-e2e-tester, parent: "security-auditor.last" }
+
+  spike_phase:
+    description: "Throwaway experiment — researcher + 1 coder card with scratch workspace, no judges."
+    steps:
+      - { profile: researcher, parent: "<intake-id>", workspace_override: "scratch" }
+      - { profile: backend-coder, parent: "researcher.last", workspace_override: "scratch" }   # both cards are intentionally throwaway
+
+
+# ---------------------------------------------------------------------------
+# PATHS — pre-declared common shapes. Each path = ordered list of stage
+# template references. Orchestrator picks a path based on classifier output.
+# Adding a new path is YAML editing, not code.
+# ---------------------------------------------------------------------------
+paths:
+
+  # ===== Full pipelines (multi-stage) =====
+
+  feature_backend:
+    description: "Full backend feature — research+arch+plan → backend → judges → ship → docs."
+    classifier_keywords_hu: [új feature backend, backend feature, szerver oldali, új API, új endpoint, REST, middleware, rate limit]
+    classifier_keywords_en: [feature, backend feature, new API, new endpoint, REST API, server-side feature, rate limit, rate limiting, middleware, endpoint]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase, docs_sync_phase]
+    terminal: false
+
+  feature_frontend:
+    description: "Full frontend feature — research+arch+UX+plan → frontend → judges → ship → docs."
+    classifier_keywords_hu: [új UI, frontend feature, kliens oldali, új oldal, új komponens UI-val]
+    classifier_keywords_en: [feature frontend, new UI feature, new page, new screen, UI component, new view]
+    stages: [research_phase, architecture_phase, ux_phase, plan_consensus_with_ux, hitl_plan_gate, implement_frontend, hitl_ship_gate, release_phase, docs_sync_phase]
+    terminal: false
+
+  feature_fullstack:
+    description: "Full-stack feature touching backend + frontend (parallel implement) + judges per side."
+    classifier_keywords_hu: [full stack, teljes funkció, backend és frontend]
+    classifier_keywords_en: [full-stack, full stack feature, end-to-end feature]
+    stages: [research_phase, architecture_phase, ux_phase, plan_consensus_with_ux, hitl_plan_gate, implement_backend, implement_frontend, hitl_ship_gate, release_phase, docs_sync_phase]
+    terminal: false
+
+  feature_data:
+    description: "Data engineering feature — schema/migration/ETL with judges + release."
+    classifier_keywords_hu: [új tábla, séma változás, migráció, ETL, adatfolyamat]
+    classifier_keywords_en: [schema change, migration, ETL, data pipeline, new table, dbt model]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_data, hitl_ship_gate, release_phase, docs_sync_phase]
+    terminal: false
+
+  feature_prompt:
+    description: "Prompt engineering production change with eval + code review."
+    classifier_keywords_hu: [új prompt produkciós, agent prompt változtatás, LLM eval]
+    classifier_keywords_en: [prompt update, agent loop change, LLM behaviour change, tool schema]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_prompt, hitl_ship_gate, release_phase, docs_sync_phase]
+    terminal: false
+
+  # ===== Planning-only / Discovery paths =====
+
+  plan_only:
+    description: "Discovery + plan-consensus + HITL approval. No build, no ship. Output: PLAN.md + ADR."
+    classifier_keywords_hu: [tervezz meg, plan only, csak terv, dokumentáld a tervet, gondold ki]
+    classifier_keywords_en: [plan only, design only, draft plan, plan the approach]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate]
+    terminal: true
+
+  research_only:
+    description: "Just a research dossier. No HITL gate needed (informational output)."
+    classifier_keywords_hu: [csak kutatás, kutass, kutatás, derítsd ki, vizsgáld meg, állapítsd meg, kutatási, versenytárs]
+    classifier_keywords_en: [research only, research, find out, look up, investigate, competitive landscape, evaluate options, survey]
+    stages: [research_only]
+    terminal: true
+
+  architecture_only:
+    description: "ADR or system design without planning. Terminal at gate."
+    classifier_keywords_hu: [ADR, csak architektúra, design dokumentum, csak modulokat]
+    classifier_keywords_en: [ADR only, architecture decision, system design doc, design document]
+    stages: [research_phase, architecture_phase, hitl_plan_gate]
+    terminal: true
+
+  ux_design_only:
+    description: "UX design / wireframes / prototype with no implementation."
+    classifier_keywords_hu: [UX terv, wireframe, mockup, prototípus, design tokens, design system]
+    classifier_keywords_en: [UX design, wireframe, mockup, prototype, design tokens, design system]
+    stages: [research_phase, ux_phase, hitl_plan_gate]
+    terminal: true
+
+  # ===== Narrow operational paths =====
+
+  hotfix:
+    description: "Skip Round A. Direct coder fix + judges + release."
+    classifier_keywords_hu: [hotfix, gyors javítás, kritikus bug, prod crash, P0, urgent]
+    classifier_keywords_en: [hotfix, urgent fix, critical bug, prod down, P0, sev1]
+    stages: [hotfix_phase, hitl_ship_gate, release_phase]
+    terminal: false
+
+  bugfix:
+    description: "Normal bug fix flow — short research + coder + judges + release."
+    classifier_keywords_hu: [bug fix, hibajavítás, bug]
+    classifier_keywords_en: [bug fix, bug, fix issue]
+    stages: [research_phase, implement_backend, hitl_ship_gate, release_phase]
+    terminal: false
+
+  refactor:
+    description: "Refactor (no behaviour change) — small research + plan gate + coder + judges + release."
+    classifier_keywords_hu: [refaktor, refactor, átalakítás kód minőség, technical debt, módosítsd a stílust]
+    classifier_keywords_en: [refactor, code cleanup, technical debt, restructure]
+    stages: [research_phase, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase]
+    terminal: false
+
+  security_audit_only:
+    description: "Standalone security audit of a specific area."
+    classifier_keywords_hu: [biztonsági audit, security review, sec audit, CVE elemzés]
+    classifier_keywords_en: [security audit, security review, threat model, CVE assessment]
+    stages: [security_audit_only, hitl_ship_gate]
+    terminal: true
+
+  perf_optimization:
+    description: "Performance optimization — research baseline + coder + judges + e2e on running stack."
+    classifier_keywords_hu: [teljesítmény, optimalizáció, perf, lassú, gyorsítsd]
+    classifier_keywords_en: [performance, optimization, perf, slow, speed up, latency]
+    stages: [research_phase, plan_consensus, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase]
+    terminal: false
+
+  e2e_only:
+    description: "Just qa-e2e-tester runs new tests against running stack."
+    classifier_keywords_hu: [E2E tesztek, integráció, futtass teszteket, smoke test]
+    classifier_keywords_en: [e2e tests, integration tests, smoke tests, run tests]
+    stages: [e2e_only]
+    terminal: true
+
+  code_review_only:
+    description: "Standalone code review of an existing PR or commit range (no implementation)."
+    classifier_keywords_hu: [code review, review a PR, ellenőrizd a kódot]
+    classifier_keywords_en: [code review, review PR, audit commit, review diff]
+    stages: [code_review_only]
+    terminal: true
+
+  prompt_eval_only:
+    description: "Prompt iteration + eval without prod change."
+    classifier_keywords_hu: [prompt iteráció, eval mérés, prompt teszt]
+    classifier_keywords_en: [prompt eval, prompt iteration, eval harness run]
+    stages: [prompt_eval_only]
+    terminal: true
+
+  docs_only:
+    description: "Docs-scribe only — README/changelog/API docs update."
+    classifier_keywords_hu: [dokumentáció frissítés, csak docs, README, changelog]
+    classifier_keywords_en: [docs only, documentation update, README, changelog, API docs]
+    stages: [docs_only, hitl_plan_gate]   # plan gate here = "approve docs draft"
+    terminal: true
+
+  deploy_only:
+    description: "Release/deploy a commit/tag that's already been judged elsewhere. Still gated by ship-HITL."
+    classifier_keywords_hu: [deploy, release, kihelyez, élesítsd, kiadás]
+    classifier_keywords_en: [deploy, release, ship the build, cut release]
+    stages: [hitl_ship_gate, release_phase, docs_sync_phase]
+    terminal: false
+
+  monitoring_setup:
+    description: "Setting up observability — metrics/logs/alerts. Goes through architect + backend."
+    classifier_keywords_hu: [monitorozás, megfigyelhetőség, metrika, alert, dashboard]
+    classifier_keywords_en: [observability, monitoring, metrics, alerts, dashboard, SLO]
+    stages: [research_phase, architecture_phase, plan_consensus, hitl_plan_gate, implement_backend, hitl_ship_gate, release_phase]
+    terminal: false
+
+
+  spike:
+    description: "Throwaway experiment — researcher + 1 coder card (scratch workspace), no judges."
+    classifier_keywords_hu: [spike, prototípus kísérlet, proof of concept, kipróbálom]
+    classifier_keywords_en: [spike, prototype experiment, POC, proof of concept, try out]
+    stages: [spike_phase]
+    terminal: true
+
+# ---------------------------------------------------------------------------
+# INVARIANTS — enforceable rules. The composer rejects any TaskSpec graph
+# that violates one of these. Engine-side checks fail fast at compose time;
+# worker-side rules are reminders in profile SOULs / KANBAN_GUIDANCE.
+# ---------------------------------------------------------------------------
+invariants:
+
+  - id: code-changes-require-judge-chain
+    description: "Any card produced by *-coder MUST be linked to code-reviewer → security-auditor → qa-e2e-tester (in order) unless explicitly waived in a declared non-production path. Capacity-aware structured recipes are validated by their own final verifier contract."
+    enforce: engine-compose-time
+    waived_in: [spike, prompt_eval_only]
+
+  - id: ship-requires-hitl
+    description: "No release_phase without an immediately preceding hitl_ship_gate."
+    enforce: engine-compose-time
+
+  - id: plan-requires-hitl
+    description: "No Round B implementation card without an immediately preceding hitl_plan_gate (except hotfix/bugfix paths)."
+    enforce: engine-compose-time
+    waived_in: [hotfix, bugfix, spike]
+
+  - id: workspace-by-profile
+    description: "Git-backed declared paths and capacity-aware structured recipes use one intake-scoped shared worktree for every persistent project card, including planners and judges. Scratch is allowed only for the explicitly throwaway spike path. Canonical checkout writes are forbidden. Non-Git ordered recipes fall back to a shared dir."
+    enforce: engine-compose-time
+
+  - id: kanban-block-not-clarify
+    description: "Workers MUST use kanban_comment + kanban_block(reason='clarify: ...') instead of the clarify tool when HERMES_KANBAN_TASK is set. Bypasses Issue #27564."
+    enforce: worker-soul + KANBAN_GUIDANCE
+
+  - id: security-vulnerable-routes-back
+    description: "On security-auditor verdict=vulnerable, create fix card → original coder, link as parent of the security card (parent→child)."
+    enforce: worker-soul (security-auditor)
+
+  - id: qa-fail-creates-fix-card
+    description: "On qa-e2e-tester fail, create a fix card → original coder, link as parent of the qa card."
+    enforce: worker-soul (orchestrator + qa-e2e-tester)
+
+  - id: reflexion-cap
+    description: "plan-reviewer Reflexion loop hard-stops at 3 iterations. Iteration tracked in card metadata 'iteration_cap: 3'."
+    enforce: engine-compose-time
+
+  - id: intake-waits-for-segment-leaves
+    description: "For each active segment, every leaf task is linked as a parent of the intake (leaf -> intake). The intake dependency-blocks and wakes after all leaves finish."
+    enforce: orchestrator runtime + dispatcher (auto_promote_children)
+
+  - id: single-dispatcher-bound
+    description: "Run one gateway dispatcher for this shared Kanban home. In this setup only the orchestrator profile has kanban.dispatch_in_gateway:true; other profiles keep it false. kanban.orchestrator_profile selects the owner/judge of a root after built-in decomposition, not the model prompt used for the initial decomposition."
+    enforce: profile configuration
+
+# ---------------------------------------------------------------------------
+# DYNAMIC SYNTHESIS — fallback when no path matches with high confidence.
+# Orchestrator composes a stage sequence from primitives, proposes via HITL.
+# ---------------------------------------------------------------------------
+dynamic_synthesis:
+  classifier_confidence_threshold: 0.5   # below this → synthesize. 2+ unique keyword hits on a typical path scores ≥0.5; 1 hit alone stays below.
+
+  # Capacity is part of decomposition. A profile match alone is not enough: a
+  # worker card must be small enough to finish and verify before agent.max_turns.
+  task_sizing:
+    max_body_chars_per_worker: 4500
+    max_recipe_steps_per_worker: 2
+    max_verification_commands_per_worker: 5
+    min_steps_to_split: 4
+    max_estimated_turn_units_per_worker: 55
+
+  # Shared Git worktrees are materialized before child cards are created.
+  # A task-body `base_branch: <name>` directive overrides this global value.
+  # If both are empty, the driver tries develop first, then main (local ref
+  # first, then origin/<name>). It never silently falls back to current HEAD.
+  git_worktree:
+    base_branch: ""
+    fallback_base_branches:
+      - develop
+      - main
+    remote: origin
+    branch_prefix: wt
+
+  proposal_template: |
+    The intake doesn't match any pre-declared path with high confidence.
+
+    Detected intent signals:
+    {detected_signals}
+
+    Proposed custom path (built from primitives):
+    {proposed_stages}
+
+    Mandatory invariants applied:
+    {invariants_applied}
+
+    Workspaces:
+    {workspaces}
+
+    HITL gates:
+    {hitl_gates}
+
+    REPLY OPTIONS (no leading slash — Telegram-friendly):
+      `approve`                  — proceed with the proposed path as-is
+      `edit: <free text>`        — describe what to change (orchestrator re-proposes)
+      `reject`                   — abandon this intake (parent card archived)
+      `use: <path-name>`         — force a pre-declared path instead of synthesis
+
+  block_reason_format: "clarify: synthesized custom path. Confirm with 'approve' or edit with 'edit: ...'. Details in comment."
+
+# ---------------------------------------------------------------------------
+# USER OVERRIDE — explicit syntax users can put in the intake body to force a
+# path or to skip classification entirely. Detected by the classifier first.
+# ---------------------------------------------------------------------------
+user_overrides:
+  # First line of intake body — exact match takes priority over keyword classification
+  kind_tag_regex: '^\s*kind:\s*([a-z_][a-z0-9_-]*)\s*$'
+  example_usage: |
+    kind: plan_only
+    Tervezzünk meg egy authentikáció flow-t Google + GitHub OAuth-szal.
