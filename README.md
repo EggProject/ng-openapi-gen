@@ -5,7 +5,7 @@ ng-openapi-gen: An OpenAPI 3.0 and 3.1 code generator for Angular
 
 This project is a NPM module that generates model interfaces and web service clients from an [OpenApi 3.0 or 3.1](https://www.openapis.org/)
 [specification](https://github.com/OAI/OpenAPI-Specification). The generated classes follow the principles of [Angular](https://angular.io/).
-The generated code is compatible with Angular 16+. Support for OpenAPI 3.1 was added since ng-openapi-gen 1.0.
+The generated code is compatible with Angular 22+. Support for OpenAPI 3.1 was added since ng-openapi-gen 1.0.
 
 For a generator for [Swagger / OpenAPI 2.0](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/2.0.md), use the
 [ng-swagger-gen](https://github.com/cyclosproject/ng-swagger-gen) instead. Note that ng-swagger-gen has been unmaintained for quite a long time.
@@ -90,6 +90,20 @@ ngOpenGen.generate();
 ```
 
 This will expect the file `my-api.yaml` (or `my-api.json`) to be in the current directory, and will generate files on `my-app/src/app/api`.
+
+## Compatibility with Angular CLI
+
+`ng-openapi-gen` is **not** an Angular workspace itself — it is a Node CLI code generator that emits code targeting Angular applications. As a result:
+
+- The Angular CLI's `ng update` schematics (designed for `angular.json` workspaces) **do not apply** to this repo. The actual dependency upgrade is performed manually via the `package.json` `peerDependencies` and `devDependencies` ranges.
+- You can still invoke the Angular CLI in your environment to confirm the targeted Angular CLI version via the standard `npx`-prefixed form:
+
+```bash
+# Print the Angular CLI version this generator targets
+npx -p @angular/cli@^22.0.0 -- ng version
+```
+
+In your Angular project, the generated code targets the Angular version declared in `peerDependencies` (`@angular/core >=22.0.0`, `rxjs ^6.6.7 || ^7.4.0`) and follows the standard `ng update` flow there.
 
 ## Configuration file and CLI arguments
 
