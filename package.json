@@ -27,7 +27,7 @@
     "build": "npm run lint && npm run compile && npm test"
   },
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "^14.2.1",
+    "@apidevtools/json-schema-ref-parser": "^15.4.0",
     "argparse": "^2.0.1",
     "eol": "^0.10.0",
     "fs-extra": "^11.3.2",
