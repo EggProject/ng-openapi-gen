@@ -31,9 +31,9 @@ import { ModelIndex } from './model-index';
  * Main generator class
  */
 export class NgOpenApiGen {
-  globals: Globals;
-  handlebarsManager: HandlebarsManager;
-  templates: Templates;
+  globals!: Globals;
+  handlebarsManager!: HandlebarsManager;
+  templates!: Templates;
   models = new Map<string, Model>();
   services = new Map<string, Service>();
   operations = new Map<string, Operation>();

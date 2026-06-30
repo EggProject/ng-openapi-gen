@@ -25,11 +25,11 @@ export class OperationVariant extends GenType implements Importable {
   paramsType: string;
   paramsImport: Importable;
 
-  importName: string;
-  importPath: string;
-  importFile: string;
-  exportName: string;
-  paramsTypeExportName: string;
+  importName!: string;
+  importPath!: string;
+  importFile!: string;
+  exportName!: string;
+  paramsTypeExportName!: string;
 
   constructor(
     public operation: Operation,

@@ -14,24 +14,24 @@ export class Model extends GenType {
 
   // General type
   isSimple: boolean;
-  isEnum: boolean;
+  isEnum!: boolean;
   isObject: boolean;
 
   // Simple properties
-  simpleType: string;
-  enumValues: EnumValue[];
+  simpleType!: string;
+  enumValues!: EnumValue[];
   enumArrayName?: string;
   enumArrayFileName?: string;
 
   // Array properties
-  elementType: string;
+  elementType!: string;
 
   // Object properties
-  properties: Property[];
-  additionalPropertiesType: string;
+  properties!: Property[];
+  additionalPropertiesType!: string;
 
   // Names of required properties without attachment to propertiy definitions
-  orphanRequiredProperties: string[];
+  orphanRequiredProperties!: string[];
 
   constructor(public openApi: OpenAPIObject, name: string, public schema: SchemaObject, options: Options) {
     super(name, unqualifiedName, options);
