@@ -3,3 +3,14 @@ node_modules
 dist
 out
 .idea
+
+# Audit / research scratch — Round A/B review artifacts
+.hermes/
+docs/research/
+docs/code-reviews/
+docs/security/
+
+# Round A/B QA reports are audit-only; Round C post-merge verification
+# and release notes ship with the PR.
+docs/qa/
+!docs/qa/post-merge-verification.md
